@@ -1,21 +1,47 @@
 'use strict';
 
 /**
- * Minimal polyfills for the browser-only globals some of pdfjs-dist's
- * font/glyph-processing code references — notably `DOMMatrix`, which
- * certain embedded font types (Type3 in particular, whose glyphs are
- * literal drawing operators rather than outlines) need interpreted even
- * just to compute text positions during plain getTextContent(), not
- * only for actual canvas rendering (which this app never does — no
- * `page.render()` call anywhere here).
+ * Minimal polyfills for a couple of things pdfjs-dist's Node.js
+ * integration code assumes exist, which don't on every Node version this
+ * app might run on (notably the Home Assistant add-on's Alpine base
+ * image, which — as of this writing — ships a Node.js build old enough
+ * to be missing both of these):
  *
- * Node.js has no DOM, so these don't exist by default. We tried the
- * `dommatrix` npm package first, but it's missing the self-mutating
- * methods (`preMultiplySelf`, `invertSelf`, `multiplySelf`) pdf.js
- * actually calls — so this implements the 2D-affine subset of the
- * DOMMatrix spec directly. It's plain, well-understood matrix math, not
- * a lot of code, and it means we know exactly what's supported.
+ * 1. `process.getBuiltinModule(name)` — a Node API pdfjs-dist uses
+ *    internally (to load `fs`/`module` for reading its standard font and
+ *    CMap data files, and to optionally `require("@napi-rs/canvas")`)
+ *    instead of a plain `require()`, since it also needs to run in
+ *    contexts without one (the browser, a bundled ESM build). Where it's
+ *    missing, pdfjs-dist catches the resulting TypeError and just warns
+ *    ("Cannot access the `require` function...", "Unable to load font
+ *    data...") rather than crashing — but that also means it silently
+ *    can't read its own bundled standard-font/CMap files, which can
+ *    reduce text-extraction fidelity for non-embedded fonts. A plain
+ *    `require()` reaches the exact same builtins on any Node version, so
+ *    polyfilling `process.getBuiltinModule` with that fixes this at the
+ *    root rather than tolerating each downstream symptom.
+ *
+ * 2. `DOMMatrix` / `Path2D` / `ImageData` — browser-only globals some
+ *    embedded font types (Type3 in particular, whose glyphs are literal
+ *    drawing operators rather than outlines) need interpreted even just
+ *    to compute text positions during plain getTextContent(), not only
+ *    for actual canvas rendering (which this app never does — no
+ *    `page.render()` call anywhere here). pdfjs-dist tries to source
+ *    these from an optional `@napi-rs/canvas` package we deliberately
+ *    don't install (see pdfExtract.js), so without our own polyfill it
+ *    falls back to a bare warning and those code paths genuinely break.
+ *    We tried the `dommatrix` npm package first; it's missing the
+ *    self-mutating methods (`preMultiplySelf`, `invertSelf`,
+ *    `multiplySelf`) pdf.js actually calls, so this implements the
+ *    2D-affine subset of the spec directly instead — plain,
+ *    well-understood matrix math, and we know exactly what's supported.
  */
+
+function installNodeBuiltinModulePolyfill() {
+  if (typeof process.getBuiltinModule !== 'function') {
+    process.getBuiltinModule = (name) => require(name);
+  }
+}
 
 class DOMMatrixPolyfill {
   constructor(init) {
@@ -162,6 +188,7 @@ let installed = false;
 function installDomPolyfills() {
   if (installed) return;
   installed = true;
+  installNodeBuiltinModulePolyfill();
   if (typeof globalThis.DOMMatrix === 'undefined') globalThis.DOMMatrix = DOMMatrixPolyfill;
   if (typeof globalThis.Path2D === 'undefined') globalThis.Path2D = Path2DPolyfill;
   if (typeof globalThis.ImageData === 'undefined') globalThis.ImageData = ImageDataPolyfill;

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.1
+
+- Fix: PDF text extraction could still log (non-fatal) internal warnings
+  and silently lose font-metric data on Node.js builds that lack
+  `process.getBuiltinModule` — including the Node version currently
+  shipped by the Home Assistant add-on base image. pdfjs-dist uses that
+  API internally to read its own bundled standard-font/CMap files and to
+  optionally load an unused canvas package; where it's missing, it falls
+  back to a bare warning rather than crashing, but also silently can't
+  read those files. Since a plain `require()` reaches the exact same
+  Node builtins on any version, `process.getBuiltinModule` is now
+  polyfilled with that directly (in `domPolyfills.js`, alongside the
+  1.2.1 DOMMatrix fix) — confirmed via the same "delete the API, retest"
+  simulation that caught the original issue: all warnings gone, and
+  fonts load correctly instead of just failing silently.
+
 ## 1.3.0
 
 - Scale a recipe: ½×, 2×, 3×, or a custom multiplier on the recipe
