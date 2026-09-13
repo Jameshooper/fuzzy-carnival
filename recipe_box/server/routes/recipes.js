@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const { db, DATA_DIR } = require('../db');
 const { requireAuth } = require('../auth');
+const { asyncHandler } = require('../asyncHandler');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -147,7 +148,7 @@ function validate(body) {
   return null;
 }
 
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const body = req.body || {};
   const err = validate(body);
   if (err) return res.status(400).json({ error: err });
@@ -188,7 +189,7 @@ router.post('/', async (req, res) => {
 
   const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(serializeRow(row));
-});
+}));
 
 router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM recipes WHERE id = ?').get(req.params.id);
@@ -249,7 +250,7 @@ router.post('/:id/image', upload.single('image'), (req, res) => {
 // POST /:id/image-from-url — attaches a chosen result from the "Find a
 // photo online" search to an existing recipe, downloading it server-side
 // the same way an imported link's og:image is attached on create.
-router.post('/:id/image-from-url', async (req, res) => {
+router.post('/:id/image-from-url', asyncHandler(async (req, res) => {
   const existing = db.prepare('SELECT * FROM recipes WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'not found' });
   const url = (req.body?.url || '').trim();
@@ -265,6 +266,6 @@ router.post('/:id/image-from-url', async (req, res) => {
     req.params.id
   );
   res.json({ imagePath });
-});
+}));
 
 module.exports = router;

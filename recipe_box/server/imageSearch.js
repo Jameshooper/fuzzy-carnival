@@ -33,11 +33,14 @@ async function searchImages(query, { limit = 12 } = {}) {
         Accept: 'application/json',
       },
     });
-    if (!res.ok) throw new Error(`Image search failed (HTTP ${res.status})`);
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      throw new Error(`Image search failed (HTTP ${res.status})${bodyText ? `: ${bodyText.slice(0, 300)}` : ''}`);
+    }
     const data = await res.json();
-    const results = Array.isArray(data.results) ? data.results : [];
+    const rawResults = Array.isArray(data.results) ? data.results : [];
 
-    return results
+    const mapped = rawResults
       .map((r) => ({
         id: r.id || '',
         title: r.title || '',
@@ -50,6 +53,20 @@ async function searchImages(query, { limit = 12 } = {}) {
         licenseVersion: r.license_version || '',
       }))
       .filter((r) => r.thumbnailUrl && r.imageUrl);
+
+    // Diagnostic: distinguish "Openverse genuinely has nothing for this
+    // query" from "Openverse returned results but our field-name
+    // assumptions dropped all of them" — the latter would mean the
+    // response shape doesn't match what's documented/expected.
+    if (rawResults.length && !mapped.length) {
+      console.warn(
+        `[recipe-box] image search "${query}": Openverse returned ${rawResults.length} raw result(s) but 0 survived parsing — sample keys: ${Object.keys(rawResults[0] || {}).join(', ')}`
+      );
+    } else if (typeof data.result_count === 'number') {
+      console.log(`[recipe-box] image search "${query}": Openverse result_count=${data.result_count}, page returned ${rawResults.length}, usable ${mapped.length}`);
+    }
+
+    return mapped;
   } finally {
     clearTimeout(timer);
   }

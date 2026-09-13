@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const multer = require('multer');
 const { requireAuth } = require('../auth');
+const { asyncHandler } = require('../asyncHandler');
 const { parseSharedText } = require('../parse');
 const { extractRecipeFromUrl } = require('../recipeExtract');
 const { extractTextFromPdf } = require('../pdfExtract');
@@ -28,7 +29,7 @@ const pdfUpload = multer({
 // { text, url }. When a URL is given, we try to fetch that page and read
 // its schema.org Recipe data first (far more reliable than guessing from
 // text) and only fall back to the heuristic text parser if that fails.
-router.post('/api/parse', requireAuth, express.json({ limit: '512kb' }), async (req, res) => {
+router.post('/api/parse', requireAuth, express.json({ limit: '512kb' }), asyncHandler(async (req, res) => {
   const { text, url } = req.body || {};
   const trimmedUrl = (url || '').trim();
 
@@ -46,14 +47,14 @@ router.post('/api/parse', requireAuth, express.json({ limit: '512kb' }), async (
   }
 
   res.json(parseSharedText(text || '', ''));
-});
+}));
 
 // POST /api/parse/pdf — used by the Import screen's "Upload a PDF"
 // option (e.g. a Claude conversation saved/exported as a PDF). Extracts
 // the PDF's text and runs it through the same heuristic parser used for
 // pasted text — a PDF export has no schema.org markup to read, unlike a
 // recipe webpage, so this is the best we can do automatically.
-router.post('/api/parse/pdf', requireAuth, pdfUpload.single('pdf'), async (req, res) => {
+router.post('/api/parse/pdf', requireAuth, pdfUpload.single('pdf'), asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no PDF uploaded' });
   try {
     const text = await extractTextFromPdf(req.file.buffer);
@@ -67,7 +68,7 @@ router.post('/api/parse/pdf', requireAuth, pdfUpload.single('pdf'), async (req, 
   } catch (err) {
     res.status(422).json({ error: err.message });
   }
-});
+}));
 
 // GET /share-target — the PWA's Web Share Target endpoint. When the user
 // picks "Recipe Box" from their phone's OS share sheet (e.g. sharing a

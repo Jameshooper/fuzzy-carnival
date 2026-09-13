@@ -53,3 +53,19 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`[recipe-box] listening on http://0.0.0.0:${PORT}`);
 });
+
+// Belt-and-suspenders: every route handler that can throw asynchronously
+// should already be wrapped in asyncHandler (see server/asyncHandler.js),
+// which routes rejections through the error middleware above instead of
+// here. These two handlers are the last line of defense for anything
+// that still slips through — logging loudly and staying up beats the
+// alternative (Node's default is to crash the whole process on an
+// unhandled rejection), since a crash here doesn't just fail one
+// request, it silently kills every other request in flight and the
+// container restarts with no error visible anywhere but this log.
+process.on('unhandledRejection', (reason) => {
+  console.error('[recipe-box] unhandled promise rejection (this is a bug — please report it):', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[recipe-box] uncaught exception (this is a bug — please report it):', err);
+});

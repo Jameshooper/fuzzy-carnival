@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.5.1
+
+- Fix a real crash bug: several routes (recipe creation, attaching a
+  found photo, store price checks) had no error handling around an
+  `async` handler. Express 4 (what this app uses) does not auto-catch a
+  rejected promise from an async route handler — a plain `throw` inside
+  one (even a synchronous one, like a database call failing) becomes an
+  unhandled rejection, and Node terminates the *entire process* on an
+  unhandled rejection by default. That matches exactly what showed up
+  as repeated clean start-then-stop cycles in the add-on log with no
+  visible error: the server wasn't being stopped from outside, it was
+  crashing silently and taking every in-flight request down with it.
+  All async route handlers are now wrapped in a small `asyncHandler()`
+  utility that routes failures through the normal error response
+  instead, and a global safety-net handler now logs (rather than
+  silently swallows) anything that still slips through. Verified with a
+  side-by-side reproduction: the same failure, unwrapped, previously
+  hung the request forever and could take the process down; wrapped, it
+  returns a normal error response and the server stays up.
+- Image search: added diagnostic logging to help pin down "no photos
+  found" reports — distinguishes an HTTP-level failure (with response
+  body), a genuinely empty Openverse result set, and the case where
+  Openverse returned results but none survived field-name parsing
+  (which would mean a real bug, not a coverage gap).
+- Add-on version bumped to 1.5.1.
+
 ## 1.5.0
 
 - "🔍 Find a photo online" — searches Openverse (openly-licensed images
