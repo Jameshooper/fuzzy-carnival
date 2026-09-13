@@ -1,5 +1,6 @@
 'use strict';
 const path = require('path');
+const { installDomPolyfills } = require('./domPolyfills');
 
 // pdfjs-dist (Mozilla's own PDF.js, actively maintained, zero
 // dependencies of its own) ships ESM-only, so it's loaded via a dynamic
@@ -12,6 +13,14 @@ const path = require('path');
 // version — a real compatibility bug, not a fluke of any one file. Going
 // straight to a current pdfjs-dist avoids that entirely and is the more
 // current, better-maintained engine anyway.
+//
+// Some PDFs need DOMMatrix/Path2D/ImageData (browser-only globals) even
+// for plain text extraction — certain embedded font types compute glyph
+// widths by interpreting literal drawing operators, which touches the
+// same code as canvas rendering even though this app never renders a
+// page. installDomPolyfills() provides just enough of those APIs.
+installDomPolyfills();
+
 const PKG_ROOT = path.dirname(require.resolve('pdfjs-dist/package.json'));
 const STANDARD_FONTS_URL = path.join(PKG_ROOT, 'standard_fonts') + '/';
 const CMAPS_URL = path.join(PKG_ROOT, 'cmaps') + '/';
@@ -53,17 +62,27 @@ async function extractTextFromPdf(buffer) {
     const pageCount = Math.min(doc.numPages, MAX_PAGES);
     const pageTexts = [];
     for (let i = 1; i <= pageCount; i++) {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-      let lastY = null;
-      let text = '';
-      for (const item of content.items) {
-        if (lastY !== null && item.transform[5] !== lastY) text += '\n';
-        text += item.str;
-        lastY = item.transform[5];
+      try {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        let lastY = null;
+        let text = '';
+        for (const item of content.items) {
+          if (lastY !== null && item.transform[5] !== lastY) text += '\n';
+          text += item.str;
+          lastY = item.transform[5];
+        }
+        pageTexts.push(text);
+        page.cleanup();
+      } catch (err) {
+        // A single page failing (an unusual embedded font, a malformed
+        // content stream, etc.) shouldn't sink the whole import — skip
+        // it and keep whatever other pages give us. If every page fails
+        // this way, the caller's "no readable text found" check on the
+        // combined (empty) result takes over with a friendly message,
+        // rather than a raw internal error reaching the UI.
+        console.warn(`[recipe-box] PDF page ${i} text extraction failed:`, err.message);
       }
-      pageTexts.push(text);
-      page.cleanup();
     }
     return pageTexts.join('\n\n');
   } finally {

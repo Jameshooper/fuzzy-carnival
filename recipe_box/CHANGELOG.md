@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.1
+
+- Fix: PDF upload could fail with a raw "DOMMatrix is not defined"
+  error. Some PDFs (certain embedded font types compute glyph widths by
+  interpreting literal drawing operators) touch browser-only APIs even
+  during plain text extraction, which don't exist in Node.js. Added a
+  small, correctness-tested polyfill for the DOMMatrix/Path2D/ImageData
+  surface pdfjs-dist's font code actually calls (a third-party
+  `dommatrix` package was tried first but turned out to be missing the
+  self-mutating methods — `preMultiplySelf`, `invertSelf`,
+  `multiplySelf` — pdf.js needs).
+- A single page failing to extract no longer aborts the whole PDF import
+  or leaks a raw internal error to the UI — it's skipped, and the rest
+  of the document is still used.
+
 ## 1.2.0
 
 - Import a recipe from a PDF upload (e.g. a Claude conversation saved or
