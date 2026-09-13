@@ -1,0 +1,24 @@
+{
+  "name": "recipe-box",
+  "version": "1.0.0",
+  "description": "A self-hosted, mobile-friendly recipe manager you can share recipes into from Claude and share recipes out to social apps.",
+  "private": true,
+  "license": "MIT",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "icons": "node tools/generate-icons.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.21.0",
+    "multer": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
+  }
+}

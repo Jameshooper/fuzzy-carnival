@@ -1,0 +1,21 @@
+services:
+  recipe-box:
+    build: .
+    # Or, once you've published an image instead of building locally:
+    # image: ghcr.io/<you>/recipe-box:latest
+    container_name: recipe-box
+    restart: unless-stopped
+    ports:
+      - "${RECIPE_BOX_PORT:-8090}:3000"
+    environment:
+      PORT: 3000
+      # Password required to open the app. Set a real one in your .env file.
+      RECIPE_APP_PASSWORD: ${RECIPE_APP_PASSWORD:?set RECIPE_APP_PASSWORD in .env}
+      # Random 64-char secret used to sign session cookies. Keep it stable
+      # across restarts (a new one each boot logs everyone out).
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+    volumes:
+      - recipe-data:/app/data
+
+volumes:
+  recipe-data:

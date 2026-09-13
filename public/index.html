@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Recipe Box</title>
+  <meta name="description" content="Your self-hosted recipe box." />
+  <meta name="theme-color" content="#e85d2c" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Recipe Box" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- Login screen -->
+    <section id="view-login" class="view" hidden>
+      <div class="login-card">
+        <img src="/icons/icon-192.png" alt="" class="login-logo" />
+        <h1>Recipe Box</h1>
+        <p class="muted">Enter the password to open your recipe box.</p>
+        <form id="login-form">
+          <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
+          <button type="submit" class="btn btn-primary btn-block">Unlock</button>
+          <p id="login-error" class="error-text" hidden></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Main app chrome -->
+    <div id="view-main" class="view" hidden>
+      <header class="topbar">
+        <div class="topbar-row">
+          <h1 class="brand">Recipe Box</h1>
+          <button id="btn-logout" class="icon-btn" title="Log out" aria-label="Log out">⏻</button>
+        </div>
+        <div class="search-row">
+          <input id="search-input" type="search" placeholder="Search recipes or ingredients…" />
+        </div>
+        <div id="tag-chips" class="tag-chips"></div>
+      </header>
+
+      <main id="view-list" class="screen">
+        <div id="recipe-grid" class="recipe-grid"></div>
+        <p id="empty-state" class="empty-state" hidden>
+          No recipes yet. Tap <strong>+</strong> to add one, or share a recipe into
+          Recipe Box from the Claude app or your browser.
+        </p>
+      </main>
+
+      <main id="view-detail" class="screen" hidden></main>
+
+      <main id="view-form" class="screen" hidden></main>
+
+      <main id="view-import" class="screen" hidden></main>
+
+      <nav class="bottom-nav">
+        <button class="nav-btn" data-nav="list" aria-label="All recipes">
+          <span class="nav-icon">📖</span><span>Recipes</span>
+        </button>
+        <button class="nav-btn" data-nav="favorites" aria-label="Favorites">
+          <span class="nav-icon">★</span><span>Favorites</span>
+        </button>
+        <button class="nav-btn nav-fab" data-nav="add" aria-label="Add recipe">
+          <span class="nav-icon">＋</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
