@@ -222,6 +222,42 @@ button, input, textarea, select {
 }
 .nav-fab .nav-icon { font-size: 1.6rem; }
 
+/* ---------- Add menu (FAB popup) ---------- */
+.add-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 6;
+}
+.add-menu {
+  position: fixed;
+  right: 16px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 7;
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  overflow: hidden;
+  width: min(300px, calc(100vw - 32px));
+}
+.add-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  cursor: pointer;
+}
+.add-menu-item:last-child { border-bottom: none; }
+.add-menu-item:active { background: var(--cream); }
+.add-menu-icon { font-size: 1.4rem; flex: 0 0 auto; }
+.add-menu-item strong { display: block; font-size: 0.9rem; color: var(--ink); }
+.add-menu-item small { display: block; font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+
 /* ---------- Detail view ---------- */
 .detail-hero {
   aspect-ratio: 16/9;

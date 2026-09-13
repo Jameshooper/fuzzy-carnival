@@ -125,6 +125,7 @@ function setActiveScreen(key) {
 
 async function router() {
   const { name, param } = currentRoute();
+  toggleAddMenu(false);
   try {
     if (name === 'list') {
       state.favoritesOnly = false;
@@ -158,9 +159,33 @@ async function router() {
 els.navBtns.forEach((btn) => {
   btn.addEventListener('click', () => {
     const dest = btn.dataset.nav;
-    if (dest === 'add') navigate('#/new');
+    if (dest === 'add') toggleAddMenu();
     else navigate(`#/${dest}`);
   });
+});
+
+/* ----------------------------- Add menu ---------------------------------- */
+// The "+" FAB offers a choice rather than jumping straight to a blank
+// form, since "New recipe"'s only upload is a photo — the link/text/PDF
+// import options live on a separate screen that's otherwise easy to miss.
+
+const addMenu = document.getElementById('add-menu');
+const addMenuBackdrop = document.getElementById('add-menu-backdrop');
+
+function toggleAddMenu(show) {
+  const next = show ?? addMenu.hidden;
+  addMenu.hidden = !next;
+  addMenuBackdrop.hidden = !next;
+}
+
+addMenuBackdrop.addEventListener('click', () => toggleAddMenu(false));
+document.getElementById('add-menu-import').addEventListener('click', () => {
+  toggleAddMenu(false);
+  navigate('#/import');
+});
+document.getElementById('add-menu-new').addEventListener('click', () => {
+  toggleAddMenu(false);
+  navigate('#/new');
 });
 
 /* --------------------------- List / search ------------------------------ */
