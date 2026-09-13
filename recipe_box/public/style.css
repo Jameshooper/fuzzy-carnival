@@ -298,7 +298,7 @@ button, input, textarea, select {
 }
 .scale-label { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
 .scale-chips { display: flex; gap: 6px; }
-.scale-chip {
+.scale-chip, .unit-chip {
   background: var(--border);
   border: none;
   color: var(--ink);
@@ -308,7 +308,7 @@ button, input, textarea, select {
   font-weight: 600;
   cursor: pointer;
 }
-.scale-chip.active { background: var(--brand); color: white; }
+.scale-chip.active, .unit-chip.active { background: var(--brand); color: white; }
 .scale-custom-input {
   width: 84px;
   padding: 6px 10px;

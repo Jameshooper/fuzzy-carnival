@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0
+
+- Convert a recipe between metric and US imperial units, alongside
+  scaling (combines with it — "2× in metric" is one setting). Converts
+  ingredient volumes (tsp/tbsp/cup/pt/qt/gal ⇄ ml/l) and weights (oz/lb
+  ⇄ g/kg), plus oven temperatures in the instructions (°F ⇄ °C).
+  Ingredients with no recognized unit ("3 eggs") are left as plain
+  counts. Picks the unit a recipe would actually use — e.g. 250 ml
+  reads as "1 cup", not the equivalent but unidiomatic "½ pint"; 8 oz
+  stays "8 oz" rather than becoming "½ lb" — rather than just doing the
+  raw conversion math and letting the number pick whatever unit it
+  lands closest to.
+
 ## 1.3.1
 
 - Fix: PDF text extraction could still log (non-fatal) internal warnings

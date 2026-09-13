@@ -49,6 +49,13 @@ different ways of starting it.
   fractions, mixed numbers, and ranges like "3-4 cloves"), updates the
   serving count, and it's what gets shared if you tap Share while scaled
   — all purely client-side, so it's never saved over the original.
+- **Convert metric ⇄ imperial** — a Units row next to Scale: "As
+  written", "Metric", or "Imperial". Converts every ingredient's volume
+  (tsp/tbsp/cup/pt/qt/gal ⇄ ml/l) and weight (oz/lb ⇄ g/kg) unit, and
+  oven temperatures in the instructions (°F ⇄ °C) — combines with
+  scaling, so "2× in metric" works as one setting. Picks whichever unit
+  a recipe would actually use (e.g. "1 cup", never the equivalent but
+  unidiomatic "½ pint") rather than just doing the raw math.
 - Search, tag filters, favorites, photos, and a clean ingredient
   checklist / numbered steps view for cooking.
 - Single-password protected (no accounts to manage) — good enough for

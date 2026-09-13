@@ -302,25 +302,170 @@ function formatScaledNumber(n) {
   return String(Math.round(n * 100) / 100); // no close common fraction — plain decimal
 }
 
-// Scales the leading quantity in an ingredient line (including a simple
-// range like "3-4 cloves"); text with no leading quantity ("Salt to
-// taste") is returned unchanged.
-function scaleIngredientText(text, multiplier) {
-  if (multiplier === 1) return text;
+// ---- Unit conversion (volume/weight → metric or US imperial) ----
+// Base units: ml for volume, g for weight. Longest alias wins so
+// "tablespoon" doesn't get shadowed by a shorter partial match, and every
+// alias requires a following non-letter (or end of string) so "g" can't
+// match inside "grapes".
+const VOLUME_TO_ML = {
+  tsp: 4.92892, tsps: 4.92892, teaspoon: 4.92892, teaspoons: 4.92892,
+  tbsp: 14.7868, tbsps: 14.7868, tablespoon: 14.7868, tablespoons: 14.7868,
+  'fl oz': 29.5735, floz: 29.5735, 'fluid ounce': 29.5735, 'fluid ounces': 29.5735,
+  cup: 236.588, cups: 236.588,
+  pint: 473.176, pints: 473.176, pt: 473.176, pts: 473.176,
+  quart: 946.353, quarts: 946.353, qt: 946.353, qts: 946.353,
+  gallon: 3785.41, gallons: 3785.41, gal: 3785.41,
+  ml: 1, mls: 1, milliliter: 1, milliliters: 1, millilitre: 1, millilitres: 1,
+  l: 1000, liter: 1000, liters: 1000, litre: 1000, litres: 1000,
+};
+const WEIGHT_TO_G = {
+  oz: 28.3495, ozs: 28.3495, ounce: 28.3495, ounces: 28.3495,
+  lb: 453.592, lbs: 453.592, pound: 453.592, pounds: 453.592,
+  g: 1, gs: 1, gram: 1, grams: 1,
+  kg: 1000, kgs: 1000, kilogram: 1000, kilograms: 1000,
+};
+const SORTED_VOLUME_ALIASES = Object.keys(VOLUME_TO_ML).sort((a, b) => b.length - a.length);
+const SORTED_WEIGHT_ALIASES = Object.keys(WEIGHT_TO_G).sort((a, b) => b.length - a.length);
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Finds a recognized volume/weight unit at the very start of `str`
+// (typically what's left right after an ingredient's leading quantity).
+function matchUnitToken(str) {
+  const lead = str.match(/^\s*/)[0].length;
+  const afterSpace = str.slice(lead);
+  for (const [aliases, table, baseUnit] of [
+    [SORTED_VOLUME_ALIASES, VOLUME_TO_ML, 'ml'],
+    [SORTED_WEIGHT_ALIASES, WEIGHT_TO_G, 'g'],
+  ]) {
+    for (const alias of aliases) {
+      const m = afterSpace.match(new RegExp(`^${escapeRegExp(alias)}(?![a-zA-Z])`, 'i'));
+      if (m) return { matchedLength: lead + m[0].length, toBase: table[alias], baseUnit };
+    }
+  }
+  return null;
+}
+
+function roundMetricNumber(n) {
+  if (n < 1) return Math.round(n * 20) / 20; // nearest 0.05
+  if (n < 10) return Math.round(n * 4) / 4; // nearest 0.25
+  if (n < 250) return Math.round(n / 5) * 5; // nearest 5
+  return Math.round(n / 25) * 25; // nearest 25
+}
+
+function formatMetricNumber(n) {
+  const r = Math.round(roundMetricNumber(n) * 100) / 100;
+  return String(r);
+}
+
+// Picks one sensible unit for a base (ml or g) value, shared by both ends
+// of a range so "3-4 cups" doesn't come back mismatched (e.g. "700 ml -
+// 1 l"); returns a converter usable for each endpoint individually.
+function chooseMetricUnit(baseValue, baseUnit) {
+  if (baseUnit === 'ml') return baseValue >= 1000 ? { factor: 1000, label: 'l' } : { factor: 1, label: 'ml' };
+  return baseValue >= 1000 ? { factor: 1000, label: 'kg' } : { factor: 1, label: 'g' };
+}
+
+// Picks the smallest unit that still keeps the number in a range recipes
+// actually write it in — e.g. prefers "1 cup" over the equivalent but
+// much less idiomatic "½ pint" (pint is intentionally not in this
+// ladder at all: recipes essentially never size an ingredient in
+// pints, unlike cups/quarts/gallons).
+function chooseImperialUnit(baseValue, baseUnit) {
+  if (baseUnit === 'ml') {
+    if (baseValue < 14.79) return { factor: 4.92892, singular: 'tsp', plural: 'tsp' }; // < 1 tbsp
+    if (baseValue < 59.15) return { factor: 14.7868, singular: 'tbsp', plural: 'tbsp' }; // < 1/4 cup
+    if (baseValue < 946.353) return { factor: 236.588, singular: 'cup', plural: 'cups' }; // < 1 quart
+    if (baseValue < 3785.41) return { factor: 946.353, singular: 'quart', plural: 'quarts' }; // < 1 gallon
+    return { factor: 3785.41, singular: 'gallon', plural: 'gallons' };
+  }
+  // Ounces stay ounces up to a full pound (an "8 oz block of cream
+  // cheese" is how recipes actually say it, not "½ lb").
+  return baseValue < 453.592
+    ? { factor: 28.3495, singular: 'oz', plural: 'oz' }
+    : { factor: 453.592, singular: 'lb', plural: 'lbs' };
+}
+
+// Volume units (and oz) read naturally as eighth-fractions ("1⅛ cups");
+// pounds converted from a metric weight read more naturally as a plain
+// decimal ("2.2 lbs", the conventional 1 kg ≈ 2.2 lb figure) than forced
+// into "2¼ lbs". Rounding is split out from formatting so callers can
+// decide singular/plural from the exact value that will be displayed —
+// deciding it from the unrounded value could round e.g. 1.057 cups down
+// to a displayed "1" while still labeling it plural ("1 cups").
+function roundImperialValue(n, unitSingular) {
+  return unitSingular === 'lb' ? Math.round(n * 10) / 10 : Math.round(n * 8) / 8;
+}
+function formatImperialQuantity(rounded, unitSingular) {
+  return unitSingular === 'lb' ? String(rounded) : formatScaledNumber(rounded);
+}
+
+// Scales (and optionally converts the unit system of) the leading
+// quantity in an ingredient line, including a simple range like "3-4
+// cloves". Text with no leading quantity ("Salt to taste") is returned
+// unchanged; a quantity with no recognized unit ("3 eggs") is scaled but
+// never unit-converted, since there's nothing to convert.
+function transformIngredientText(text, { multiplier = 1, unitSystem = 'original' } = {}) {
+  if (multiplier === 1 && unitSystem === 'original') return text;
   const first = matchLeadingNumber(text);
   if (!first) return text;
-
   const rest = text.slice(first.length);
+
+  let second = null;
+  let tailAfterSecond = null;
   const rangeSep = rest.match(/^\s*(-|–|to)\s*/);
   if (rangeSep) {
     const afterSep = rest.slice(rangeSep[0].length);
-    const second = matchLeadingNumber(afterSep);
-    if (second) {
-      const tail = afterSep.slice(second.length);
-      return `${formatScaledNumber(first.value * multiplier)}-${formatScaledNumber(second.value * multiplier)}${tail}`;
+    const secondMatch = matchLeadingNumber(afterSep);
+    if (secondMatch) {
+      second = secondMatch;
+      tailAfterSecond = afterSep.slice(secondMatch.length);
     }
   }
-  return `${formatScaledNumber(first.value * multiplier)}${rest}`;
+  const restForUnit = second ? tailAfterSecond : rest;
+  const unit = unitSystem === 'original' ? null : matchUnitToken(restForUnit);
+
+  if (!unit) {
+    if (second) return `${formatScaledNumber(first.value * multiplier)}-${formatScaledNumber(second.value * multiplier)}${tailAfterSecond}`;
+    return `${formatScaledNumber(first.value * multiplier)}${rest}`;
+  }
+
+  const tail = restForUnit.slice(unit.matchedLength);
+  const v1Base = first.value * multiplier * unit.toBase;
+  const v2Base = second ? second.value * multiplier * unit.toBase : null;
+  const refBase = v2Base != null ? Math.max(v1Base, v2Base) : v1Base;
+
+  if (unitSystem === 'metric') {
+    const target = chooseMetricUnit(refBase, unit.baseUnit);
+    const v1 = formatMetricNumber(v1Base / target.factor);
+    if (v2Base == null) return `${v1} ${target.label}${tail}`;
+    const v2 = formatMetricNumber(v2Base / target.factor);
+    return `${v1}-${v2} ${target.label}${tail}`;
+  }
+
+  // imperial
+  const target = chooseImperialUnit(refBase, unit.baseUnit);
+  const refRounded = roundImperialValue(refBase / target.factor, target.singular);
+  const label = refRounded > 1.04 ? target.plural : target.singular;
+  const v1 = formatImperialQuantity(roundImperialValue(v1Base / target.factor, target.singular), target.singular);
+  if (v2Base == null) return `${v1} ${label}${tail}`;
+  const v2 = formatImperialQuantity(roundImperialValue(v2Base / target.factor, target.singular), target.singular);
+  return `${v1}-${v2} ${label}${tail}`;
+}
+
+// Converts Fahrenheit/Celsius mentions in instruction text (e.g. oven
+// temperatures) to the target system; left untouched for 'original'.
+function transformInstructionText(text, unitSystem) {
+  if (unitSystem === 'original') return text;
+  return text.replace(/(\d+(?:\.\d+)?)\s*°?\s*(fahrenheit|celsius|[fc])\b/gi, (whole, numStr, unitStr) => {
+    const num = Number(numStr);
+    const isF = /^f/i.test(unitStr);
+    if (unitSystem === 'metric' && isF) return `${Math.round(((num - 32) * (5 / 9)) / 5) * 5}°C`;
+    if (unitSystem === 'imperial' && !isF) return `${Math.round((num * (9 / 5) + 32) / 5) * 5}°F`;
+    return whole;
+  });
 }
 
 function scaleServingsText(text, multiplier) {
@@ -345,6 +490,7 @@ function scaleServingsText(text, multiplier) {
 async function renderDetail(id) {
   const r = await api(`/api/recipes/${id}`);
   let scale = 1;
+  let unitSystem = 'original';
 
   const hasServingsMeta = Boolean(r.servings);
   const meta = [
@@ -375,6 +521,14 @@ async function renderDetail(id) {
         </div>
         <input type="number" id="scale-custom" class="scale-custom-input" placeholder="Custom ×" min="0.1" step="0.25" />
       </div>
+      <div class="scale-row">
+        <span class="scale-label">Units</span>
+        <div class="scale-chips">
+          <button type="button" class="unit-chip active" data-unit="original">As written</button>
+          <button type="button" class="unit-chip" data-unit="metric">Metric</button>
+          <button type="button" class="unit-chip" data-unit="imperial">Imperial</button>
+        </div>
+      </div>
 
       <div class="section-title-row">
         <h3 class="section-title">Ingredients</h3>
@@ -388,7 +542,7 @@ async function renderDetail(id) {
     ${r.instructions.length ? `
       <h3 class="section-title">Instructions</h3>
       <ol class="instruction-list">
-        ${r.instructions.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
+        ${r.instructions.map((step, i) => `<li id="instr-${i}">${escapeHtml(step)}</li>`).join('')}
       </ol>` : ''}
 
     ${r.notes ? `<h3 class="section-title">Notes</h3><div class="notes-block">${escapeHtml(r.notes)}</div>` : ''}
@@ -405,19 +559,22 @@ async function renderDetail(id) {
   document.getElementById('btn-edit').addEventListener('click', () => navigate(`#/edit/${r.id}`));
   document.getElementById('btn-fav').addEventListener('click', () => toggleFavorite(r));
   document.getElementById('btn-delete').addEventListener('click', () => deleteRecipe(r));
-  document.getElementById('btn-share').addEventListener('click', () => shareRecipe(r, scale));
+  document.getElementById('btn-share').addEventListener('click', () => shareRecipe(r, scale, unitSystem));
 
   const checkBtn = document.getElementById('btn-check-stores');
   if (checkBtn) checkBtn.addEventListener('click', () => checkStorePrices(r, checkBtn));
 
-  function applyScale(newScale) {
-    scale = newScale;
+  function applyTransforms() {
     r.ingredients.forEach((ing, i) => {
       const label = document.getElementById(`ing-label-${i}`);
-      if (label) label.textContent = scaleIngredientText(ing, scale);
+      if (label) label.textContent = transformIngredientText(ing, { multiplier: scale, unitSystem });
     });
     const servingsEl = document.getElementById('meta-servings');
     if (servingsEl) servingsEl.textContent = scaleServingsText(r.servings, scale);
+    r.instructions.forEach((step, i) => {
+      const el = document.getElementById(`instr-${i}`);
+      if (el) el.textContent = transformInstructionText(step, unitSystem);
+    });
   }
 
   const scaleChips = [...document.querySelectorAll('.scale-chip')];
@@ -426,7 +583,8 @@ async function renderDetail(id) {
     chip.addEventListener('click', () => {
       scaleChips.forEach((c) => c.classList.toggle('active', c === chip));
       if (scaleCustomInput) scaleCustomInput.value = '';
-      applyScale(Number(chip.dataset.scale));
+      scale = Number(chip.dataset.scale);
+      applyTransforms();
     });
   });
   if (scaleCustomInput) {
@@ -434,9 +592,19 @@ async function renderDetail(id) {
       const val = Number(scaleCustomInput.value);
       if (!val || val <= 0) return;
       scaleChips.forEach((c) => c.classList.remove('active'));
-      applyScale(val);
+      scale = val;
+      applyTransforms();
     });
   }
+
+  const unitChips = [...document.querySelectorAll('.unit-chip')];
+  unitChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      unitChips.forEach((c) => c.classList.toggle('active', c === chip));
+      unitSystem = chip.dataset.unit;
+      applyTransforms();
+    });
+  });
 }
 
 async function checkStorePrices(r, btn) {
@@ -498,20 +666,23 @@ async function deleteRecipe(r) {
   navigate('#/list');
 }
 
-function recipeToShareText(r, scale = 1) {
+function recipeToShareText(r, scale = 1, unitSystem = 'original') {
   const lines = [r.title, ''];
   const servings = scale !== 1 ? scaleServingsText(r.servings, scale) : r.servings;
   const meta = [servings ? `Serves: ${servings}` : '', r.prepTime ? `Prep time: ${r.prepTime}` : '', r.cookTime ? `Cook time: ${r.cookTime}` : ''].filter(Boolean);
-  if (scale !== 1) meta.push(`scaled ×${formatScaledNumber(scale)}`);
+  const notes = [];
+  if (scale !== 1) notes.push(`scaled ×${formatScaledNumber(scale)}`);
+  if (unitSystem !== 'original') notes.push(unitSystem === 'metric' ? 'converted to metric' : 'converted to US imperial');
+  if (notes.length) meta.push(notes.join(', '));
   if (meta.length) lines.push(meta.join(' | '), '');
   if (r.ingredients.length) {
     lines.push('Ingredients:');
-    r.ingredients.forEach((i) => lines.push(`- ${scale !== 1 ? scaleIngredientText(i, scale) : i}`));
+    r.ingredients.forEach((i) => lines.push(`- ${transformIngredientText(i, { multiplier: scale, unitSystem })}`));
     lines.push('');
   }
   if (r.instructions.length) {
     lines.push('Instructions:');
-    r.instructions.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    r.instructions.forEach((s, i) => lines.push(`${i + 1}. ${transformInstructionText(s, unitSystem)}`));
     lines.push('');
   }
   if (r.notes) lines.push('Notes:', r.notes, '');
@@ -519,8 +690,8 @@ function recipeToShareText(r, scale = 1) {
   return lines.join('\n').trim();
 }
 
-async function shareRecipe(r, scale = 1) {
-  const text = recipeToShareText(r, scale);
+async function shareRecipe(r, scale = 1, unitSystem = 'original') {
+  const text = recipeToShareText(r, scale, unitSystem);
   if (navigator.share) {
     try {
       await navigator.share({ title: r.title, text, url: r.sourceUrl || undefined });
