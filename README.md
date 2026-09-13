@@ -44,6 +44,11 @@ different ways of starting it.
   also attempts a best-effort live price/availability lookup. See
   [Grocery store integration](#grocery-store-integration-prisma--citymarket)
   below for the honest details on how reliable that is.
+- **Scale a recipe** — ½×, 2×, 3×, or a custom multiplier, right on the
+  recipe screen. Recalculates every ingredient quantity live (handles
+  fractions, mixed numbers, and ranges like "3-4 cloves"), updates the
+  serving count, and it's what gets shared if you tap Share while scaled
+  — all purely client-side, so it's never saved over the original.
 - Search, tag filters, favorites, photos, and a clean ingredient
   checklist / numbered steps view for cooking.
 - Single-password protected (no accounts to manage) — good enough for

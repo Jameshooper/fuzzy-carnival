@@ -252,12 +252,103 @@ function renderGrid(recipes) {
   }
 }
 
+/* ------------------------------ Scaling ---------------------------------- */
+// Client-side only — never sent to the server or saved, so switching
+// scale is instant and never touches the stored recipe. Re-derives the
+// displayed quantities from the recipe's original ingredient text every
+// time, rather than compounding an already-scaled display, so repeated
+// scale changes never drift from the real values.
+
+const UNICODE_FRACTIONS = {
+  '¼': 1 / 4, '½': 1 / 2, '¾': 3 / 4,
+  '⅓': 1 / 3, '⅔': 2 / 3,
+  '⅕': 1 / 5, '⅖': 2 / 5, '⅗': 3 / 5, '⅘': 4 / 5,
+  '⅙': 1 / 6, '⅚': 5 / 6,
+  '⅛': 1 / 8, '⅜': 3 / 8, '⅝': 5 / 8, '⅞': 7 / 8,
+};
+const UNICODE_FRACTION_CHARS = Object.keys(UNICODE_FRACTIONS).join('');
+// Common cooking fractions to snap a scaled result back onto, so "⅓ cup"
+// doubled reads as "⅔ cup" rather than "0.67 cup".
+const NICE_FRACTIONS = [
+  [0, ''], [1 / 8, '⅛'], [1 / 4, '¼'], [1 / 3, '⅓'], [3 / 8, '⅜'], [1 / 2, '½'],
+  [5 / 8, '⅝'], [2 / 3, '⅔'], [3 / 4, '¾'], [7 / 8, '⅞'],
+];
+
+function matchLeadingNumber(str) {
+  let m = str.match(/^(\d+)\s+(\d+)\/(\d+)(?!\d)/); // mixed: "1 1/2"
+  if (m) return { value: Number(m[1]) + Number(m[2]) / Number(m[3]), length: m[0].length };
+  m = str.match(new RegExp(`^(\\d+)\\s*([${UNICODE_FRACTION_CHARS}])`)); // mixed: "1½" / "1 ½"
+  if (m) return { value: Number(m[1]) + UNICODE_FRACTIONS[m[2]], length: m[0].length };
+  m = str.match(/^(\d+)\/(\d+)(?!\d)/); // "1/2"
+  if (m) return { value: Number(m[1]) / Number(m[2]), length: m[0].length };
+  m = str.match(new RegExp(`^([${UNICODE_FRACTION_CHARS}])`)); // "½"
+  if (m) return { value: UNICODE_FRACTIONS[m[1]], length: m[0].length };
+  m = str.match(/^(\d+(?:\.\d+)?)/); // "2" / "1.5"
+  if (m) return { value: Number(m[1]), length: m[0].length };
+  return null;
+}
+
+function formatScaledNumber(n) {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  const whole = Math.floor(n + 1e-9);
+  const frac = n - whole;
+  if (frac > 0.96) return String(whole + 1);
+  for (const [val, glyph] of NICE_FRACTIONS) {
+    if (Math.abs(frac - val) < 0.04) {
+      if (val === 0) return String(whole || 0);
+      return whole ? `${whole}${glyph}` : glyph;
+    }
+  }
+  return String(Math.round(n * 100) / 100); // no close common fraction — plain decimal
+}
+
+// Scales the leading quantity in an ingredient line (including a simple
+// range like "3-4 cloves"); text with no leading quantity ("Salt to
+// taste") is returned unchanged.
+function scaleIngredientText(text, multiplier) {
+  if (multiplier === 1) return text;
+  const first = matchLeadingNumber(text);
+  if (!first) return text;
+
+  const rest = text.slice(first.length);
+  const rangeSep = rest.match(/^\s*(-|–|to)\s*/);
+  if (rangeSep) {
+    const afterSep = rest.slice(rangeSep[0].length);
+    const second = matchLeadingNumber(afterSep);
+    if (second) {
+      const tail = afterSep.slice(second.length);
+      return `${formatScaledNumber(first.value * multiplier)}-${formatScaledNumber(second.value * multiplier)}${tail}`;
+    }
+  }
+  return `${formatScaledNumber(first.value * multiplier)}${rest}`;
+}
+
+function scaleServingsText(text, multiplier) {
+  if (multiplier === 1 || !text) return text;
+  const trimmed = text.trim();
+
+  // Prefer a number explicitly next to the word "serving(s)" — e.g. "1
+  // loaf (8 servings)" should scale the 8, not the loaf count.
+  const servingWord = trimmed.match(/(\d+(?:\.\d+)?)(\s*servings?\b)/i);
+  if (servingWord) {
+    const scaled = formatScaledNumber(Number(servingWord[1]) * multiplier);
+    return trimmed.slice(0, servingWord.index) + scaled + servingWord[2] + trimmed.slice(servingWord.index + servingWord[0].length);
+  }
+
+  const first = matchLeadingNumber(trimmed);
+  if (first) return `${formatScaledNumber(first.value * multiplier)}${trimmed.slice(first.length)}`;
+  return `${text} (×${formatScaledNumber(multiplier)})`;
+}
+
 /* ------------------------------ Detail ---------------------------------- */
 
 async function renderDetail(id) {
   const r = await api(`/api/recipes/${id}`);
+  let scale = 1;
+
+  const hasServingsMeta = Boolean(r.servings);
   const meta = [
-    r.servings ? `Serves ${escapeHtml(r.servings)}` : '',
+    hasServingsMeta ? `Serves <span id="meta-servings">${escapeHtml(r.servings)}</span>` : '',
     r.prepTime ? `Prep ${escapeHtml(r.prepTime)}` : '',
     r.cookTime ? `Cook ${escapeHtml(r.cookTime)}` : '',
   ].filter(Boolean);
@@ -274,13 +365,24 @@ async function renderDetail(id) {
     ${r.description ? `<p>${escapeHtml(r.description)}</p>` : ''}
 
     ${r.ingredients.length ? `
+      <div class="scale-row">
+        <span class="scale-label">Scale</span>
+        <div class="scale-chips">
+          <button type="button" class="scale-chip" data-scale="0.5">½×</button>
+          <button type="button" class="scale-chip active" data-scale="1">1×</button>
+          <button type="button" class="scale-chip" data-scale="2">2×</button>
+          <button type="button" class="scale-chip" data-scale="3">3×</button>
+        </div>
+        <input type="number" id="scale-custom" class="scale-custom-input" placeholder="Custom ×" min="0.1" step="0.25" />
+      </div>
+
       <div class="section-title-row">
         <h3 class="section-title">Ingredients</h3>
         <button class="btn btn-ghost btn-small" id="btn-check-stores">🛒 Check store prices</button>
       </div>
       <p id="store-note" class="store-note" hidden></p>
       <ul class="ingredient-list">
-        ${r.ingredients.map((ing, i) => `<li data-ingredient="${escapeAttr(ing)}"><input type="checkbox" id="ing-${i}" /><label for="ing-${i}">${escapeHtml(ing)}</label><span class="store-badges" id="store-badges-${i}"></span></li>`).join('')}
+        ${r.ingredients.map((ing, i) => `<li data-ingredient="${escapeAttr(ing)}"><input type="checkbox" id="ing-${i}" /><label for="ing-${i}" id="ing-label-${i}">${escapeHtml(ing)}</label><span class="store-badges" id="store-badges-${i}"></span></li>`).join('')}
       </ul>` : ''}
 
     ${r.instructions.length ? `
@@ -303,10 +405,38 @@ async function renderDetail(id) {
   document.getElementById('btn-edit').addEventListener('click', () => navigate(`#/edit/${r.id}`));
   document.getElementById('btn-fav').addEventListener('click', () => toggleFavorite(r));
   document.getElementById('btn-delete').addEventListener('click', () => deleteRecipe(r));
-  document.getElementById('btn-share').addEventListener('click', () => shareRecipe(r));
+  document.getElementById('btn-share').addEventListener('click', () => shareRecipe(r, scale));
 
   const checkBtn = document.getElementById('btn-check-stores');
   if (checkBtn) checkBtn.addEventListener('click', () => checkStorePrices(r, checkBtn));
+
+  function applyScale(newScale) {
+    scale = newScale;
+    r.ingredients.forEach((ing, i) => {
+      const label = document.getElementById(`ing-label-${i}`);
+      if (label) label.textContent = scaleIngredientText(ing, scale);
+    });
+    const servingsEl = document.getElementById('meta-servings');
+    if (servingsEl) servingsEl.textContent = scaleServingsText(r.servings, scale);
+  }
+
+  const scaleChips = [...document.querySelectorAll('.scale-chip')];
+  const scaleCustomInput = document.getElementById('scale-custom');
+  scaleChips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      scaleChips.forEach((c) => c.classList.toggle('active', c === chip));
+      if (scaleCustomInput) scaleCustomInput.value = '';
+      applyScale(Number(chip.dataset.scale));
+    });
+  });
+  if (scaleCustomInput) {
+    scaleCustomInput.addEventListener('input', () => {
+      const val = Number(scaleCustomInput.value);
+      if (!val || val <= 0) return;
+      scaleChips.forEach((c) => c.classList.remove('active'));
+      applyScale(val);
+    });
+  }
 }
 
 async function checkStorePrices(r, btn) {
@@ -368,13 +498,15 @@ async function deleteRecipe(r) {
   navigate('#/list');
 }
 
-function recipeToShareText(r) {
+function recipeToShareText(r, scale = 1) {
   const lines = [r.title, ''];
-  const meta = [r.servings ? `Serves: ${r.servings}` : '', r.prepTime ? `Prep time: ${r.prepTime}` : '', r.cookTime ? `Cook time: ${r.cookTime}` : ''].filter(Boolean);
+  const servings = scale !== 1 ? scaleServingsText(r.servings, scale) : r.servings;
+  const meta = [servings ? `Serves: ${servings}` : '', r.prepTime ? `Prep time: ${r.prepTime}` : '', r.cookTime ? `Cook time: ${r.cookTime}` : ''].filter(Boolean);
+  if (scale !== 1) meta.push(`scaled ×${formatScaledNumber(scale)}`);
   if (meta.length) lines.push(meta.join(' | '), '');
   if (r.ingredients.length) {
     lines.push('Ingredients:');
-    r.ingredients.forEach((i) => lines.push(`- ${i}`));
+    r.ingredients.forEach((i) => lines.push(`- ${scale !== 1 ? scaleIngredientText(i, scale) : i}`));
     lines.push('');
   }
   if (r.instructions.length) {
@@ -387,8 +519,8 @@ function recipeToShareText(r) {
   return lines.join('\n').trim();
 }
 
-async function shareRecipe(r) {
-  const text = recipeToShareText(r);
+async function shareRecipe(r, scale = 1) {
+  const text = recipeToShareText(r, scale);
   if (navigator.share) {
     try {
       await navigator.share({ title: r.title, text, url: r.sourceUrl || undefined });

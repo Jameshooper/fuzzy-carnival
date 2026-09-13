@@ -285,6 +285,39 @@ button, input, textarea, select {
 .detail-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
 .detail-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .tag-pill { background: var(--border); color: var(--brand-dark); padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; }
+.scale-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0 4px;
+  padding: 10px 12px;
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.scale-label { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.scale-chips { display: flex; gap: 6px; }
+.scale-chip {
+  background: var(--border);
+  border: none;
+  color: var(--ink);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.scale-chip.active { background: var(--brand); color: white; }
+.scale-custom-input {
+  width: 84px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
 .section-title { font-size: 1rem; font-weight: 700; margin: 18px 0 8px; }
 .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 4px; flex-wrap: wrap; }
 .section-title-row .section-title { margin: 0; }

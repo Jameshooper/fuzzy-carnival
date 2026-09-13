@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+- Scale a recipe: ½×, 2×, 3×, or a custom multiplier on the recipe
+  screen. Recalculates every ingredient's quantity (integers, decimals,
+  simple and mixed fractions, unicode fraction glyphs, and ranges like
+  "3-4 cloves"), updates the serving count, and carries through to
+  Share. Entirely client-side and non-destructive — never saved over
+  the recipe's original text, and checkbox state survives a scale
+  change.
+
 ## 1.2.1
 
 - Fix: PDF upload could fail with a raw "DOMMatrix is not defined"
