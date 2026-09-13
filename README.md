@@ -20,12 +20,20 @@ different ways of starting it.
 
 - **Mobile web app (PWA)** — installable to your phone's home screen,
   works full-screen, has a bottom nav bar and offline-capable app shell.
-- **Share recipes *into* the app** — registers as a target in your phone's
-  OS share sheet. Copy a recipe out of a Claude conversation (or a
-  recipe website, or a text message), tap **Share → Recipe Box**, and the
-  text is parsed into a structured draft (title, ingredients,
-  instructions, servings, times, source link) for you to review and save.
-  You can also just paste text manually from the **Import** screen.
+- **Share recipes *into* the app** — on Android, registers as a target in
+  your phone's OS share sheet: copy a recipe out of a Claude conversation
+  (or a recipe website, or a text message), tap **Share → Recipe Box**,
+  and the text is parsed into a structured draft for you to review and
+  save. (iOS/Safari doesn't support this browser API at all — see
+  [Sharing a recipe from Claude](#sharing-a-recipe-from-claude) below for
+  the iPhone-specific path, which is arguably better anyway.)
+- **Paste a recipe link and it's parsed automatically** — the **Import**
+  screen also takes a plain URL: paste a recipe webpage's link and Recipe
+  Box fetches it and reads the `schema.org Recipe` data almost every
+  recipe site already publishes (title, ingredients, instructions, times,
+  photo, the works) — far more reliable than guessing from text. Works
+  the same on iOS and Android. You can also just paste raw recipe text
+  manually, same screen.
 - **Share recipes *out*** — every recipe has a Share button that opens
   your phone's native share sheet (via the Web Share API) so you can send
   a nicely formatted recipe to Messages, WhatsApp, Instagram, email, etc.
@@ -96,21 +104,54 @@ docker run -d \
 
 ## Sharing a recipe from Claude
 
+**Android:**
+
 1. In the Claude app, open a conversation containing a recipe and select
    the message text (or use Claude's own share/copy action).
 2. Tap **Share**, then choose **Recipe Box** from the share sheet
-   (Recipe Box must be installed to your home screen first — plain
-   browser tabs aren't offered as share targets on most phones).
+   (Recipe Box must be installed to your home screen first).
 3. Recipe Box opens straight to a pre-filled recipe draft. Check it over,
    fix anything the parser missed, and tap **Save**.
 
-If your phone doesn't offer Recipe Box in the share sheet, or you're on a
-browser without the Web Share Target API (e.g. desktop Safari), just copy
-the text and use the **Import** screen's "paste text" box instead — same
-parser, same result.
+**iPhone/iPad:** Safari/WebKit has no support for the Web Share Target
+API at all — Apple has explicitly declined to implement it ([WebKit bug
+194593](https://bugs.webkit.org/show_bug.cgi?id=194593)), so Recipe Box
+can never show up in iOS's share sheet the normal way. Two options:
 
-Both the share-in and share-out features require **HTTPS** (or
-`localhost`) — see "Running behind a reverse proxy" below.
+- **If the recipe has a link** (a recipe website, or one Claude gave
+  you): just paste that link into Recipe Box's **Import** screen — it
+  fetches and parses the page automatically. No setup needed.
+- **For raw shared text** (e.g. Claude wrote out a recipe with no link):
+  set up a one-time [Shortcuts app
+  shortcut](recipe_box/DOCS.md#iphone--ipad) that adds Recipe Box to your
+  share sheet — full step-by-step in the linked docs.
+
+On any platform, no share sheet entry, or nothing to share — just paste
+text or a link into the **Import** screen instead; same result.
+
+Sharing in via the OS share sheet (Android) and sharing out via the Web
+Share API both require **HTTPS** (or `localhost`) — see "Running behind
+a reverse proxy" below. Pasting a link or text into the Import screen has
+no such requirement and works over plain HTTP.
+
+## Importing a recipe from a link
+
+Paste a URL into the **Import** screen (or just paste a bare link into
+its text box — it's detected automatically) and Recipe Box fetches the
+page and reads its `schema.org Recipe` markup: the same structured data
+almost every recipe site publishes deliberately so Google can build
+recipe rich-snippets from it. That gets you the title, ingredients,
+instructions, servings, prep/cook time, category tags, and photo, pulled
+out directly rather than guessed at.
+
+If a page doesn't have that markup, you still get its title/description
+as a starting point instead of an error — fill in the rest by hand, or
+paste the page's visible text into the text box instead, which runs
+through the heuristic text parser.
+
+This makes an outbound request to whatever URL you paste, so it's gated
+behind login like everything else, and only runs when you explicitly
+submit a link — never automatically or in the background.
 
 ## Grocery store integration (Prisma / Citymarket)
 

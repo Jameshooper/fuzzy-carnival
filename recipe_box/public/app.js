@@ -419,6 +419,10 @@ function renderForm(recipe, prefillNotice) {
     title: '', description: '', ingredients: [], instructions: [], servings: '',
     prepTime: '', cookTime: '', tags: [], sourceUrl: '', notes: '', imagePath: '', favorite: false,
   };
+  // A draft parsed from an imported link may carry a page image we
+  // haven't downloaded yet — show it as a live preview and only fetch it
+  // server-side on save, so we don't waste downloads on discarded drafts.
+  const previewImage = r.imagePath || r.imageUrl || '';
 
   els.screens.form.innerHTML = `
     <div class="back-row">
@@ -429,7 +433,7 @@ function renderForm(recipe, prefillNotice) {
     ${!isEdit ? `<p class="muted" style="margin:0 0 14px;">Have recipe text from Claude or another app? <a href="#/import">Paste it instead →</a></p>` : ''}
 
     <form id="recipe-form">
-      <div class="image-preview" id="image-preview" style="${r.imagePath ? `background-image:url('${escapeAttr(r.imagePath)}')` : ''}">${r.imagePath ? '' : 'No photo yet'}</div>
+      <div class="image-preview" id="image-preview" style="${previewImage ? `background-image:url('${escapeAttr(previewImage)}')` : ''}">${previewImage ? '' : 'No photo yet'}</div>
       <div class="form-group">
         <label>Photo</label>
         <input type="file" id="image-file" accept="image/*" />
@@ -496,10 +500,12 @@ function renderForm(recipe, prefillNotice) {
   const getInstructions = createListEditor(document.getElementById('instructions-editor'), r.instructions, 'e.g. Preheat oven to 350°F');
 
   let pendingImageFile = null;
+  let pendingImageUrl = r.imageUrl || ''; // cleared if the user picks their own file instead
   document.getElementById('image-file').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     pendingImageFile = file;
+    pendingImageUrl = '';
     const preview = document.getElementById('image-preview');
     preview.style.backgroundImage = `url('${URL.createObjectURL(file)}')`;
     preview.textContent = '';
@@ -523,6 +529,7 @@ function renderForm(recipe, prefillNotice) {
       notes: document.getElementById('f-notes').value.trim(),
       sourceUrl: document.getElementById('f-source').value.trim(),
       favorite: r.favorite || false,
+      ...(pendingImageUrl ? { sourceImageUrl: pendingImageUrl } : {}),
     };
     if (!payload.title) return toast('Title is required');
 
@@ -559,17 +566,18 @@ function renderImport() {
       <span></span>
     </div>
     <p class="import-intro">
-      Paste recipe text — copied from a Claude conversation, a website, or shared from
-      another app — and we'll turn it into a recipe you can review and save.
-      You can also share text directly into Recipe Box from your phone's share sheet.
+      Paste a link to a recipe page and we'll read it automatically — or paste recipe
+      text copied from a Claude conversation, a website, or shared from another app,
+      and we'll do our best to turn it into a recipe you can review and save. You can
+      also share text directly into Recipe Box from your phone's share sheet.
     </p>
     <div class="form-group">
-      <label for="import-text">Recipe text</label>
-      <textarea id="import-text" rows="10" placeholder="Paste ingredients &amp; instructions here…">${escapeHtml(pre.text || '')}</textarea>
+      <label for="import-url">Recipe link</label>
+      <input type="url" id="import-url" value="${escapeAttr(pre.url || '')}" placeholder="https://example.com/some-recipe" />
     </div>
     <div class="form-group">
-      <label for="import-url">Source URL (optional)</label>
-      <input type="url" id="import-url" value="${escapeAttr(pre.url || '')}" placeholder="https://…" />
+      <label for="import-text">…or paste recipe text</label>
+      <textarea id="import-text" rows="8" placeholder="Paste ingredients &amp; instructions here…">${escapeHtml(pre.text || '')}</textarea>
     </div>
     <button class="btn btn-primary btn-block" id="btn-parse">Parse recipe →</button>
     <div id="import-review"></div>
@@ -577,15 +585,29 @@ function renderImport() {
 
   document.getElementById('btn-cancel').addEventListener('click', () => navigate('#/list'));
   document.getElementById('btn-parse').addEventListener('click', async () => {
-    const text = document.getElementById('import-text').value;
-    const url = document.getElementById('import-url').value.trim();
-    if (!text.trim()) return toast('Paste some recipe text first');
+    let text = document.getElementById('import-text').value;
+    let url = document.getElementById('import-url').value.trim();
+
+    // A bare link pasted into the text box (common when sharing/copying
+    // just a URL) counts as the link, not text to heuristically parse.
+    if (!url && /^https?:\/\/\S+$/i.test(text.trim())) {
+      url = text.trim();
+      text = '';
+    }
+
+    if (!url && !text.trim()) return toast('Paste a recipe link or some recipe text first');
+
+    const btn = document.getElementById('btn-parse');
+    btn.disabled = true;
+    btn.textContent = url ? 'Fetching recipe…' : 'Parsing…';
     try {
       const draft = await api('/api/parse', { method: 'POST', body: JSON.stringify({ text, url }) });
       setActiveScreen('form');
       renderForm(draft);
     } catch (err) {
       toast(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Parse recipe →';
     }
   });
 

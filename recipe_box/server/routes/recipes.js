@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const { db, DATA_DIR } = require('../db');
@@ -24,6 +25,34 @@ const upload = multer({
     else cb(new Error('only image uploads are allowed'));
   },
 });
+
+// Best-effort fetch of an external image (e.g. a recipe page's og:image,
+// surfaced by the link-import flow) into local storage. Never throws —
+// a failed download just means the recipe saves without a photo.
+async function downloadImageToUploads(url) {
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(parsed.toString(), { signal: controller.signal, redirect: 'follow' });
+      if (!res.ok) return '';
+      const ct = res.headers.get('content-type') || '';
+      if (!/^image\//.test(ct)) return '';
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length > 8 * 1024 * 1024) return '';
+      const ext = (ct.split('/')[1] || 'jpg').split(';')[0].replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'jpg';
+      const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+      fs.writeFileSync(path.join(DATA_DIR, 'uploads', filename), buf);
+      return `/uploads/${filename}`;
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return '';
+  }
+}
 
 function toJson(value) {
   try {
@@ -118,10 +147,20 @@ function validate(body) {
   return null;
 }
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const body = req.body || {};
   const err = validate(body);
   if (err) return res.status(400).json({ error: err });
+
+  // When a recipe is created from an imported link, the draft carries an
+  // external image URL (e.g. the page's og:image) rather than an
+  // uploaded file. Fetch it in now, best-effort, so the recipe already
+  // has a photo. A manually-uploaded file (via POST /:id/image, after
+  // creation) always takes priority over this.
+  let imagePath = body.imagePath || '';
+  if (!imagePath && body.sourceImageUrl) {
+    imagePath = await downloadImageToUploads(body.sourceImageUrl);
+  }
 
   const now = new Date().toISOString();
   const info = db
@@ -140,7 +179,7 @@ router.post('/', (req, res) => {
       cook_time: body.cookTime || '',
       tags: toJson(body.tags),
       source_url: body.sourceUrl || '',
-      image_path: body.imagePath || '',
+      image_path: imagePath,
       notes: body.notes || '',
       favorite: body.favorite ? 1 : 0,
       created_at: now,
