@@ -246,4 +246,25 @@ router.post('/:id/image', upload.single('image'), (req, res) => {
   res.json({ imagePath });
 });
 
+// POST /:id/image-from-url — attaches a chosen result from the "Find a
+// photo online" search to an existing recipe, downloading it server-side
+// the same way an imported link's og:image is attached on create.
+router.post('/:id/image-from-url', async (req, res) => {
+  const existing = db.prepare('SELECT * FROM recipes WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'not found' });
+  const url = (req.body?.url || '').trim();
+  if (!url) return res.status(400).json({ error: 'missing url' });
+
+  const imagePath = await downloadImageToUploads(url);
+  if (!imagePath) {
+    return res.status(502).json({ error: "Couldn't download that image — try a different result." });
+  }
+  db.prepare('UPDATE recipes SET image_path = ?, updated_at = ? WHERE id = ?').run(
+    imagePath,
+    new Date().toISOString(),
+    req.params.id
+  );
+  res.json({ imagePath });
+});
+
 module.exports = router;

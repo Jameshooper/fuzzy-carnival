@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+- "🔍 Find a photo online" — searches Openverse (openly-licensed images
+  from Wikimedia Commons, Flickr, museums, and more; no API key needed)
+  by the recipe's title and shows a row of candidate photos with their
+  license, on both the recipe form and any existing recipe with no
+  photo. You pick the one you want rather than one being auto-attached.
+  Only runs when tapped, same as the store price check.
+
 ## 1.4.0
 
 - Convert a recipe between metric and US imperial units, alongside

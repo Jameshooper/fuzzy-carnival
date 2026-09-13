@@ -268,7 +268,15 @@ button, input, textarea, select {
   margin: -16px -16px 14px;
   border-radius: 0 0 20px 20px;
 }
-.detail-hero.no-image { display: flex; align-items: center; justify-content: center; font-size: 3rem; color: rgba(255,255,255,0.7); }
+.detail-hero.no-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 3rem;
+  color: rgba(255,255,255,0.7);
+}
 .back-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .back-btn { background: none; border: none; font-size: 1rem; color: var(--brand-dark); cursor: pointer; padding: 4px 0; }
 .fav-toggle-btn {
@@ -429,6 +437,36 @@ button, input, textarea, select {
   color: var(--muted);
   margin-bottom: 10px;
   overflow: hidden;
+}
+.image-results-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-top: 10px;
+  padding-bottom: 2px;
+}
+.image-result {
+  flex: 0 0 auto;
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  background: var(--border);
+}
+.image-result img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.image-result:active { border-color: var(--brand); }
+.image-result-license {
+  position: absolute;
+  left: 3px; bottom: 3px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  border-radius: 999px;
 }
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
 .form-actions .btn { flex: 1; }

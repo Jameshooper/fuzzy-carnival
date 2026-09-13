@@ -56,6 +56,14 @@ different ways of starting it.
   scaling, so "2× in metric" works as one setting. Picks whichever unit
   a recipe would actually use (e.g. "1 cup", never the equivalent but
   unidiomatic "½ pint") rather than just doing the raw math.
+- **Find a photo online** — a "🔍 Find a photo online" button on the
+  recipe form and on any existing recipe with no photo, searching
+  [Openverse](https://openverse.org) (openly-licensed images aggregated
+  from Wikimedia Commons, Flickr, museums, and more — no API key needed,
+  and unlike the grocery-store integration this is exactly what the API
+  is built for) by title. Shows a row of candidate photos with their
+  license so you pick one yourself, rather than auto-attaching whatever
+  comes back first.
 - Search, tag filters, favorites, photos, and a clean ingredient
   checklist / numbered steps view for cooking.
 - Single-password protected (no accounts to manage) — good enough for

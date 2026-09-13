@@ -504,7 +504,10 @@ async function renderDetail(id) {
       <button class="back-btn" id="btn-back">‹ Recipes</button>
       <button class="fav-toggle-btn" id="btn-fav" title="Toggle favorite">${r.favorite ? '★' : '☆'}</button>
     </div>
-    <div class="detail-hero ${r.imagePath ? '' : 'no-image'}" style="${r.imagePath ? `background-image:url('${escapeAttr(r.imagePath)}')` : ''}">${r.imagePath ? '' : '🍽️'}</div>
+    <div class="detail-hero ${r.imagePath ? '' : 'no-image'}" id="detail-hero" style="${r.imagePath ? `background-image:url('${escapeAttr(r.imagePath)}')` : ''}">
+      ${r.imagePath ? '' : `🍽️<button type="button" class="btn btn-ghost btn-small" id="btn-find-photo-detail" style="position:relative;z-index:1;margin-top:10px;background:white;">🔍 Find a photo online</button>`}
+    </div>
+    <div id="image-search-results-detail"></div>
     <h2 class="detail-title">${escapeHtml(r.title)}</h2>
     ${meta.length ? `<div class="detail-meta">${meta.map((m) => `<span>${m}</span>`).join('')}</div>` : ''}
     ${r.tags.length ? `<div class="detail-tags">${r.tags.map((t) => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
@@ -563,6 +566,25 @@ async function renderDetail(id) {
 
   const checkBtn = document.getElementById('btn-check-stores');
   if (checkBtn) checkBtn.addEventListener('click', () => checkStorePrices(r, checkBtn));
+
+  const findPhotoBtn = document.getElementById('btn-find-photo-detail');
+  if (findPhotoBtn) {
+    findPhotoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderImageSearchResults(document.getElementById('image-search-results-detail'), r.title, findPhotoBtn, async (result) => {
+        try {
+          await api(`/api/recipes/${r.id}/image-from-url`, {
+            method: 'POST',
+            body: JSON.stringify({ url: result.imageUrl }),
+          });
+          toast('Photo added');
+          renderDetail(r.id);
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+    });
+  }
 
   function applyTransforms() {
     r.ingredients.forEach((ing, i) => {
@@ -708,6 +730,55 @@ async function shareRecipe(r, scale = 1, unitSystem = 'original') {
   }
 }
 
+/* --------------------------- Image search ---------------------------------- */
+// Shared by the recipe form and the detail view's "no photo yet" state.
+// Searches Openverse (openly-licensed images) by title text and shows a
+// row of candidate thumbnails for the user to pick from, rather than
+// auto-attaching whatever comes back first — a wrong or irrelevant photo
+// picked automatically would be worse than no photo at all.
+
+async function renderImageSearchResults(container, query, triggerBtn, onSelect) {
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.textContent = 'Searching…';
+  }
+  container.innerHTML = '<p class="muted" style="font-size:0.82rem;margin:8px 0 0;">Searching…</p>';
+  try {
+    const results = await api(`/api/image-search?q=${encodeURIComponent(query)}`);
+    if (!results.length) {
+      container.innerHTML = '<p class="muted" style="font-size:0.82rem;margin:8px 0 0;">No photos found for that title — try editing it, or upload your own.</p>';
+      return;
+    }
+    container.innerHTML = `
+      <div class="image-results-strip">
+        ${results
+          .map(
+            (r, i) => `
+          <button type="button" class="image-result" id="image-result-${i}" title="${escapeAttr(r.creator ? `Photo by ${r.creator}${r.provider ? ` via ${r.provider}` : ''}` : '')}">
+            <img src="${escapeAttr(r.thumbnailUrl)}" alt="${escapeAttr(r.title)}" loading="lazy" />
+            ${r.license ? `<span class="image-result-license">${escapeHtml(r.license)}</span>` : ''}
+          </button>`
+          )
+          .join('')}
+      </div>
+      <p class="muted" style="font-size:0.74rem;margin:6px 0 0;">Openly-licensed photos via Openverse — tap one's credit to see the source.</p>
+    `;
+    results.forEach((r, i) => {
+      document.getElementById(`image-result-${i}`).addEventListener('click', () => {
+        onSelect(r);
+        container.innerHTML = '';
+      });
+    });
+  } catch (err) {
+    container.innerHTML = `<p class="error-text" style="font-size:0.82rem;margin:8px 0 0;">${escapeHtml(err.message)}</p>`;
+  } finally {
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.textContent = '🔍 Find a photo online';
+    }
+  }
+}
+
 /* ------------------------------- Form ------------------------------------ */
 
 function createListEditor(container, items, placeholder) {
@@ -765,6 +836,8 @@ function renderForm(recipe, prefillNotice) {
       <div class="form-group">
         <label>Photo</label>
         <input type="file" id="image-file" accept="image/*" />
+        <button type="button" class="btn btn-ghost btn-small" id="btn-find-photo" style="margin-top:8px;">🔍 Find a photo online</button>
+        <div id="image-search-results"></div>
       </div>
 
       <div class="form-group">
@@ -837,6 +910,19 @@ function renderForm(recipe, prefillNotice) {
     const preview = document.getElementById('image-preview');
     preview.style.backgroundImage = `url('${URL.createObjectURL(file)}')`;
     preview.textContent = '';
+  });
+
+  document.getElementById('btn-find-photo').addEventListener('click', (e) => {
+    const query = document.getElementById('f-title').value.trim();
+    if (!query) return toast('Enter a title first');
+    renderImageSearchResults(document.getElementById('image-search-results'), query, e.target, (result) => {
+      pendingImageFile = null;
+      pendingImageUrl = result.imageUrl;
+      document.getElementById('image-file').value = '';
+      const preview = document.getElementById('image-preview');
+      preview.style.backgroundImage = `url('${result.thumbnailUrl}')`;
+      preview.textContent = '';
+    });
   });
 
   const cancel = () => navigate(isEdit ? `#/recipe/${r.id}` : '#/list');
