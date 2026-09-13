@@ -468,6 +468,14 @@ button, input, textarea, select {
   padding: 1px 5px;
   border-radius: 999px;
 }
+.image-refine-row { display: flex; gap: 8px; }
+.image-refine-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
 .form-actions .btn { flex: 1; }
 

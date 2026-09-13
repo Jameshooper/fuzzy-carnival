@@ -746,7 +746,30 @@ async function renderImageSearchResults(container, query, triggerBtn, onSelect) 
   try {
     const results = await api(`/api/image-search?q=${encodeURIComponent(query)}`);
     if (!results.length) {
-      container.innerHTML = '<p class="muted" style="font-size:0.82rem;margin:8px 0 0;">No photos found for that title — try editing it, or upload your own.</p>';
+      // Stock-photo search engines match short, generic terms far better
+      // than a full recipe-blog-style title ("Caramelized Onion, Goat
+      // Cheese & Thyme Chicken Roulade" won't match anything verbatim,
+      // but "chicken roulade" might) — let the user narrow it down
+      // themselves rather than being stuck with the literal title.
+      container.innerHTML = `
+        <p class="muted" style="font-size:0.82rem;margin:8px 0 6px;">No photos found for "${escapeHtml(query)}". Long or unusual titles often don't match — try a shorter, more generic search:</p>
+        <div class="image-refine-row">
+          <input type="text" id="image-refine-input" value="${escapeAttr(query)}" placeholder="e.g. chicken roulade" />
+          <button type="button" class="btn btn-secondary btn-small" id="image-refine-btn">Search</button>
+        </div>
+      `;
+      const refineInput = document.getElementById('image-refine-input');
+      const retry = () => {
+        const q = refineInput.value.trim();
+        if (q) renderImageSearchResults(container, q, triggerBtn, onSelect);
+      };
+      document.getElementById('image-refine-btn').addEventListener('click', retry);
+      refineInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          retry();
+        }
+      });
       return;
     }
     container.innerHTML = `

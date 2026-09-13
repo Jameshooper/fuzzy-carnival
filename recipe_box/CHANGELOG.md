@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.2
+
+- Image search: when a title finds nothing (confirmed via the 1.5.1
+  diagnostics: this happens for genuinely empty Openverse results, not
+  a parsing bug — long, specific, recipe-blog-style titles rarely match
+  a stock-photo catalog's metadata verbatim), you can now refine the
+  search right there instead of being stuck with the literal title —
+  an editable field pre-filled with your search, defaulting to it, so
+  narrowing "Caramelized Onion, Goat Cheese & Thyme Chicken Roulade"
+  down to "chicken roulade" takes one edit and a tap.
+
 ## 1.5.1
 
 - Fix a real crash bug: several routes (recipe creation, attaching a
