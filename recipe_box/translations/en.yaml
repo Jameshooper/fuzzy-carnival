@@ -1,0 +1,13 @@
+---
+configuration:
+  password:
+    name: Password
+    description: >-
+      The password you'll enter on Recipe Box's login screen. Change this
+      from the default before starting the add-on.
+  session_secret:
+    name: Session secret (advanced)
+    description: >-
+      Leave this blank — the add-on generates and stores one for you on
+      first start. Only set it yourself if you specifically need to
+      control the value (e.g. restoring it after moving to a new host).

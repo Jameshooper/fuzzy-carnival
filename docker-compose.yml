@@ -1,6 +1,8 @@
 services:
   recipe-box:
-    build: .
+    build:
+      context: ./recipe_box
+      dockerfile: Dockerfile.standalone
     # Or, once you've published an image instead of building locally:
     # image: ghcr.io/<you>/recipe-box:latest
     container_name: recipe-box
@@ -14,6 +16,10 @@ services:
       # Random 64-char secret used to sign session cookies. Keep it stable
       # across restarts (a new one each boot logs everyone out).
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      # Optional overrides if the default grocery-store search URL guess
+      # doesn't match reality — see .env.example.
+      PRISMA_SEARCH_URL_TEMPLATE: ${PRISMA_SEARCH_URL_TEMPLATE:-}
+      CITYMARKET_SEARCH_URL_TEMPLATE: ${CITYMARKET_SEARCH_URL_TEMPLATE:-}
     volumes:
       - recipe-data:/app/data
 

@@ -249,9 +249,13 @@ async function renderDetail(id) {
     ${r.description ? `<p>${escapeHtml(r.description)}</p>` : ''}
 
     ${r.ingredients.length ? `
-      <h3 class="section-title">Ingredients</h3>
+      <div class="section-title-row">
+        <h3 class="section-title">Ingredients</h3>
+        <button class="btn btn-ghost btn-small" id="btn-check-stores">🛒 Check store prices</button>
+      </div>
+      <p id="store-note" class="store-note" hidden></p>
       <ul class="ingredient-list">
-        ${r.ingredients.map((ing, i) => `<li><input type="checkbox" id="ing-${i}" /><label for="ing-${i}">${escapeHtml(ing)}</label></li>`).join('')}
+        ${r.ingredients.map((ing, i) => `<li data-ingredient="${escapeAttr(ing)}"><input type="checkbox" id="ing-${i}" /><label for="ing-${i}">${escapeHtml(ing)}</label><span class="store-badges" id="store-badges-${i}"></span></li>`).join('')}
       </ul>` : ''}
 
     ${r.instructions.length ? `
@@ -275,6 +279,53 @@ async function renderDetail(id) {
   document.getElementById('btn-fav').addEventListener('click', () => toggleFavorite(r));
   document.getElementById('btn-delete').addEventListener('click', () => deleteRecipe(r));
   document.getElementById('btn-share').addEventListener('click', () => shareRecipe(r));
+
+  const checkBtn = document.getElementById('btn-check-stores');
+  if (checkBtn) checkBtn.addEventListener('click', () => checkStorePrices(r, checkBtn));
+}
+
+async function checkStorePrices(r, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  try {
+    const results = await api('/api/stores/check', {
+      method: 'POST',
+      body: JSON.stringify({ ingredients: r.ingredients }),
+    });
+
+    const byIngredient = new Map();
+    for (const item of results) {
+      if (!byIngredient.has(item.ingredient)) byIngredient.set(item.ingredient, []);
+      byIngredient.get(item.ingredient).push(item);
+    }
+
+    r.ingredients.forEach((ing, i) => {
+      const el = document.getElementById(`store-badges-${i}`);
+      if (!el) return;
+      const items = byIngredient.get(ing) || [];
+      el.innerHTML = items
+        .map((it) => {
+          const label = it.found
+            ? `${escapeHtml(it.storeName)}${it.price != null ? ` · ${it.price.toFixed(2)} €` : ''}`
+            : `${escapeHtml(it.storeName)} 🔍`;
+          const href = it.found && it.url ? it.url : it.searchUrl;
+          return `<a class="store-pill${it.found ? ' found' : ''}" href="${escapeAttr(href)}" target="_blank" rel="noopener">${label}</a>`;
+        })
+        .join('');
+    });
+
+    const note = document.getElementById('store-note');
+    note.textContent =
+      'Prices shown are best-effort where available (currently Prisma only) and may be out of date or missing — tap a store name to search for it yourself. Citymarket currently offers a search link only.';
+    note.hidden = false;
+
+    btn.textContent = '🛒 Recheck prices';
+  } catch (err) {
+    toast(err.message);
+    btn.textContent = '🛒 Check store prices';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function toggleFavorite(r) {

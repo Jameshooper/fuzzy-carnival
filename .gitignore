@@ -1,5 +1,7 @@
 node_modules/
+recipe_box/node_modules/
 data/
+recipe_box/data/
 .env
 *.log
 .DS_Store

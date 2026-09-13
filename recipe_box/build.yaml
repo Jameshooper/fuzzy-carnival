@@ -1,0 +1,10 @@
+---
+build_from:
+  amd64: ghcr.io/home-assistant/amd64-base:3.19
+  aarch64: ghcr.io/home-assistant/aarch64-base:3.19
+  armv7: ghcr.io/home-assistant/armv7-base:3.19
+labels:
+  org.opencontainers.image.title: "Recipe Box"
+  org.opencontainers.image.description: "Self-hosted recipe manager for Home Assistant"
+  org.opencontainers.image.source: "https://github.com/Jameshooper/fuzzy-carnival"
+  org.opencontainers.image.licenses: "MIT"
