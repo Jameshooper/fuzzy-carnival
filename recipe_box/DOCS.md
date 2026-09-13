@@ -54,18 +54,26 @@ isn't a bug or a missing setting, Apple has explicitly declined to
 implement it ([WebKit bug
 194593](https://bugs.webkit.org/show_bug.cgi?id=194593): "no intent to
 commit"). So on iOS, Recipe Box can never appear in the share sheet the
-way it does on Android. There are two good ways around it:
+way it does on Android. There are three good ways around it:
 
-**Paste a link — the easiest path.** Recipe Box can fetch a recipe
-webpage itself and read it automatically (see [Importing a recipe from a
-link](#importing-a-recipe-from-a-link) below). If what you're sharing
-has a URL — a recipe website, or a link Claude gave you — just copy the
-link and paste it into Recipe Box's **Import** screen. No Shortcut setup
-needed, works today, and doesn't depend on Apple ever fixing this.
+**Paste a link — the easiest path when there is one.** Recipe Box can
+fetch a recipe webpage itself and read it automatically (see [Importing
+a recipe from a link](#importing-a-recipe-from-a-link) below). If what
+you're sharing has a URL — a recipe website, or a link Claude gave you —
+just copy the link and paste it into Recipe Box's **Import** screen. No
+setup needed, works today.
 
-**A Shortcut, for pasting raw text (e.g. Claude's own written-out
-recipe, with no link).** This adds Recipe Box to your share sheet via
-the Shortcuts app — a one-time, few-minutes setup:
+**Save/export as a PDF, then upload it — the easiest path for a
+Claude-written recipe with no link.** In the Claude app, use its
+share/export action to save the conversation as a PDF (or print-to-PDF
+from Safari), then open Recipe Box's **Import** screen and use **Upload
+a PDF** to pick that file. See [Importing a recipe from a
+PDF](#importing-a-recipe-from-a-pdf) below. Also no setup needed — it's
+just a normal, already-logged-in file upload.
+
+**A Shortcut, for pasting raw text without saving a file first.** This
+adds Recipe Box to your share sheet via the Shortcuts app — a one-time,
+few-minutes setup:
 
 1. Open **Shortcuts** → **+** to create a new shortcut.
 2. Add action **URL Encode** (search for it; leave its input as the
@@ -95,6 +103,16 @@ use the link-import path above.
 
 No share sheet entry, on either platform? Use the in-app **Import**
 screen's paste box — same parser, same result.
+
+## Importing a recipe from a PDF
+
+The Import screen also takes a PDF file — useful if you've saved or
+exported a Claude conversation as a PDF. Recipe Box extracts the PDF's
+text and runs it through the same parser used for pasted text (a PDF
+export has no structured recipe data to read the way a recipe webpage
+does, so this is the best it can do automatically — review the result
+before saving, same as any import). Scanned/image-only PDFs with no real
+text layer aren't supported; you'll get a clear message if that happens.
 
 ## Importing a recipe from a link
 

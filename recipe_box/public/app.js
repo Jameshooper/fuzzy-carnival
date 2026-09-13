@@ -580,6 +580,16 @@ function renderImport() {
       <textarea id="import-text" rows="8" placeholder="Paste ingredients &amp; instructions here…">${escapeHtml(pre.text || '')}</textarea>
     </div>
     <button class="btn btn-primary btn-block" id="btn-parse">Parse recipe →</button>
+
+    <div class="import-divider"><span>or</span></div>
+    <div class="form-group">
+      <label for="import-pdf">Upload a PDF</label>
+      <input type="file" id="import-pdf" accept="application/pdf" />
+      <p class="muted" style="margin:6px 0 0;font-size:0.8rem;">
+        E.g. a Claude conversation saved or exported as a PDF.
+      </p>
+    </div>
+
     <div id="import-review"></div>
   `;
 
@@ -608,6 +618,25 @@ function renderImport() {
       toast(err.message);
       btn.disabled = false;
       btn.textContent = 'Parse recipe →';
+    }
+  });
+
+  document.getElementById('import-pdf').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const input = e.target;
+    input.disabled = true;
+    toast('Reading PDF…');
+    try {
+      const fd = new FormData();
+      fd.append('pdf', file);
+      const draft = await api('/api/parse/pdf', { method: 'POST', body: fd });
+      setActiveScreen('form');
+      renderForm(draft);
+    } catch (err) {
+      toast(err.message);
+      input.disabled = false;
+      input.value = '';
     }
   });
 

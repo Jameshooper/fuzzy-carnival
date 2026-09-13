@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0
+
+- Import a recipe from a PDF upload (e.g. a Claude conversation saved or
+  exported as a PDF) — extracts the text and runs it through the same
+  parser used for pasted text.
+- Uses `pdfjs-dist` directly for PDF text extraction rather than the
+  `pdf-parse` package: its bundled legacy pdf.js builds threw errors on
+  valid, freshly-generated PDFs under this project's Node version, a
+  real compatibility bug rather than a fluke of any one file.
+
 ## 1.1.0
 
 - Import a recipe directly from a link: fetches the page and reads its

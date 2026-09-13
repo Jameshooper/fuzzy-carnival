@@ -116,15 +116,17 @@ docker run -d \
 **iPhone/iPad:** Safari/WebKit has no support for the Web Share Target
 API at all — Apple has explicitly declined to implement it ([WebKit bug
 194593](https://bugs.webkit.org/show_bug.cgi?id=194593)), so Recipe Box
-can never show up in iOS's share sheet the normal way. Two options:
+can never show up in iOS's share sheet the normal way. Three options:
 
 - **If the recipe has a link** (a recipe website, or one Claude gave
   you): just paste that link into Recipe Box's **Import** screen — it
   fetches and parses the page automatically. No setup needed.
-- **For raw shared text** (e.g. Claude wrote out a recipe with no link):
-  set up a one-time [Shortcuts app
-  shortcut](recipe_box/DOCS.md#iphone--ipad) that adds Recipe Box to your
-  share sheet — full step-by-step in the linked docs.
+- **If it doesn't** (Claude wrote the recipe out inline): use Claude's
+  share/export action to save it as a PDF, then use Import's **Upload a
+  PDF** option. Also no setup needed — just a normal file upload.
+- **For raw text without saving a file first:** set up a one-time
+  [Shortcuts app shortcut](recipe_box/DOCS.md#iphone--ipad) that adds
+  Recipe Box to your share sheet — full step-by-step in the linked docs.
 
 On any platform, no share sheet entry, or nothing to share — just paste
 text or a link into the **Import** screen instead; same result.
@@ -133,6 +135,15 @@ Sharing in via the OS share sheet (Android) and sharing out via the Web
 Share API both require **HTTPS** (or `localhost`) — see "Running behind
 a reverse proxy" below. Pasting a link or text into the Import screen has
 no such requirement and works over plain HTTP.
+
+## Importing a recipe from a PDF
+
+Import also takes a PDF upload — handy for a Claude conversation saved
+or exported as a PDF. Recipe Box extracts its text and runs it through
+the same heuristic parser used for pasted text (a PDF has no structured
+recipe markup to read, unlike a webpage, so review the result same as
+any import). Scanned/image-only PDFs aren't supported — you'll get a
+clear message rather than a silent failure.
 
 ## Importing a recipe from a link
 
