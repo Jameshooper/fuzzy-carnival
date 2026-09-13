@@ -24,6 +24,6 @@ LABEL \
   io.hass.name="Recipe Box" \
   io.hass.description="Self-hosted recipe manager: share recipes from Claude, share out to social apps, check ingredient prices at Prisma/Citymarket" \
   io.hass.type="addon" \
-  io.hass.version="1.5.2"
+  io.hass.version="1.5.3"
 
 CMD [ "/run.sh" ]

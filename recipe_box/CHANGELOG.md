@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.3
+
+- The session cookie's `Secure` flag was hardcoded off, ignoring
+  whether the connection was actually HTTPS (e.g. through a reverse
+  proxy like Tailscale Serve). Now respects `req.secure`, which
+  correctly reads `X-Forwarded-Proto` since `trust proxy` is already
+  enabled — Secure when reached over real HTTPS (direct or proxied),
+  still works over plain LAN HTTP (a Secure cookie there would never be
+  sent back by the browser at all, breaking login). Verified both cases
+  directly against the Set-Cookie header.
+
 ## 1.5.2
 
 - Image search: when a title finds nothing (confirmed via the 1.5.1

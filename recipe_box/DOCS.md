@@ -32,6 +32,47 @@ under plain Docker; you can still add it to your HA dashboard as a
 **Webpage card** pointing at its direct URL if you want it visible
 inside the HA UI too.
 
+## Getting real HTTPS (removes the "Not Secure" warning, unlocks sharing on Android)
+
+By default Recipe Box is plain `http://` on your LAN — your browser
+will show it as "Not Secure," and two features silently stop working
+without HTTPS: the Web Share Target API (Android's share-sheet
+integration) and the Web Share API (the in-app Share button). Everything
+else works fine over plain HTTP; this step is optional but worth doing.
+
+If you already have the official **Tailscale** add-on (Settings →
+Add-ons → Add-on Store → search "Tailscale") installed and connected to
+your tailnet, this is the easiest path — a real, trusted certificate
+with no manual cert management, and it stays private to your own
+tailnet (no public internet exposure):
+
+1. Open the Tailscale add-on's **Configuration** tab.
+2. Add a `services` entry pointing at Recipe Box's published port
+   (`8090` by default):
+   ```yaml
+   services:
+     - name: svc:recipebox
+       target: http://127.0.0.1:8090
+       protocol: http
+       port: 443
+       path: /
+   ```
+3. Save and restart the Tailscale add-on.
+4. Recipe Box is now reachable at `https://recipebox.<your-tailnet-name>.ts.net`
+   from any device connected to your tailnet — including your phone, if
+   the Tailscale app is installed and connected there too.
+5. Re-do **Add to Home Screen** using this new `https://` address
+   (replacing the old `http://` one), and update the address in your
+   [iOS Shortcut](#iphone--ipad) if you set one up.
+
+No Tailscale? A reverse proxy in front of Recipe Box's port — Caddy is
+the simplest (automatic HTTPS with almost no config) — works the same
+way, provided you have a domain pointed at your home network. Either
+way, Recipe Box itself needs no configuration change: it already
+respects a reverse proxy's `X-Forwarded-Proto` header (marking its
+session cookie `Secure` only when the connection is genuinely HTTPS) so
+this works with no code changes on Recipe Box's side.
+
 ## Sharing recipes from Claude
 
 ### Android

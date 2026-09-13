@@ -39,23 +39,22 @@ function verify(token) {
   return true;
 }
 
-function issueCookie(res) {
+function issueCookie(req, res) {
   const expiry = String(Date.now() + MAX_AGE_MS);
   const token = sign(expiry);
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: req_is_https(res),
+    // req.secure respects X-Forwarded-Proto because index.js sets `trust
+    // proxy` — true when the request is HTTPS directly, or reached
+    // through a reverse proxy (Tailscale Serve, Caddy, nginx, Traefik...)
+    // that terminates TLS in front of the app. False on plain LAN HTTP,
+    // so login still works there — a Secure cookie would otherwise never
+    // be sent back by the browser at all.
+    secure: req.secure,
     maxAge: MAX_AGE_MS,
     path: '/',
   });
-}
-
-function req_is_https(res) {
-  // Trust proxy header when behind a reverse proxy (Traefik/nginx/Caddy on
-  // a home server); fall back to false so cookies still work over plain
-  // HTTP on a LAN.
-  return false;
 }
 
 function clearCookie(res) {

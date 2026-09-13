@@ -16,7 +16,7 @@ router.post('/login', express.json(), (req, res) => {
   if (!auth.checkPassword(password || '')) {
     return res.status(401).json({ error: 'incorrect password' });
   }
-  auth.issueCookie(res);
+  auth.issueCookie(req, res);
   res.json({ authenticated: true });
 });
 
