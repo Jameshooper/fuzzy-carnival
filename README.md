@@ -2,8 +2,7 @@
 
 A self-hosted, mobile-first recipe manager. Add it to your phone's home
 screen like an app, save recipes shared from Claude (or any app) via your
-phone's share sheet, share recipes back out to social/messaging apps,
-and check ingredient prices at Prisma and Citymarket.
+phone's share sheet, and share recipes back out to social/messaging apps.
 
 The app lives in [`recipe_box/`](recipe_box/) and runs **either**:
 
@@ -38,12 +37,6 @@ different ways of starting it.
   your phone's native share sheet (via the Web Share API) so you can send
   a nicely formatted recipe to Messages, WhatsApp, Instagram, email, etc.
   Falls back to copy-to-clipboard on desktop browsers.
-- **Check grocery prices** — each recipe has a "🛒 Check store prices"
-  button. It always shows a one-tap search link per ingredient for both
-  **Prisma** (s-kaupat.fi) and **Citymarket** (k-ruoka.fi); for Prisma it
-  also attempts a best-effort live price/availability lookup. See
-  [Grocery store integration](#grocery-store-integration-prisma--citymarket)
-  below for the honest details on how reliable that is.
 - **Scale a recipe** — ½×, 2×, 3×, or a custom multiplier, right on the
   recipe screen. Recalculates every ingredient quantity live (handles
   fractions, mixed numbers, and ranges like "3-4 cloves"), updates the
@@ -59,9 +52,8 @@ different ways of starting it.
 - **Find a photo online** — a "🔍 Find a photo online" button on the
   recipe form and on any existing recipe with no photo, searching
   [Openverse](https://openverse.org) (openly-licensed images aggregated
-  from Wikimedia Commons, Flickr, museums, and more — no API key needed,
-  and unlike the grocery-store integration this is exactly what the API
-  is built for) by title. Shows a row of candidate photos with their
+  from Wikimedia Commons, Flickr, museums, and more — no API key needed)
+  by title. Shows a row of candidate photos with their
   license so you pick one yourself, rather than auto-attaching whatever
   comes back first.
 - Search, tag filters, favorites, photos, and a clean ingredient
@@ -184,31 +176,6 @@ This makes an outbound request to whatever URL you paste, so it's gated
 behind login like everything else, and only runs when you explicitly
 submit a link — never automatically or in the background.
 
-## Grocery store integration (Prisma / Citymarket)
-
-Worth knowing exactly what this does and doesn't do:
-
-- Prisma (S Group) and Citymarket (K Group/Kesko) are **different
-  companies with separate online stores** (s-kaupat.fi vs. k-ruoka.fi).
-  Neither publishes a public product API.
-- The **search-link** pill next to every ingredient always works — it's
-  just a normal search URL for that store, opened in your own logged-in
-  browser session (so pricing/stock reflects your own selected store).
-  The exact URL pattern (`recipe_box/server/stores/*.js`) is a
-  best-guess default; if it 404s for you, override it with the
-  `PRISMA_SEARCH_URL_TEMPLATE` / `CITYMARKET_SEARCH_URL_TEMPLATE`
-  environment variables (`{query}` is replaced with the ingredient).
-- The **live price badge** is currently only attempted for Prisma, via
-  an old, unofficial S Group search endpoint — genuinely experimental,
-  unverified against the current site, and silently falls back to the
-  search link on any failure. Citymarket live pricing isn't implemented
-  at all yet (see the comment at the top of
-  `recipe_box/server/stores/citymarket.js` for exactly what's needed to
-  add it — it boils down to "capture one real request from your
-  browser's DevTools and send it over").
-- Nothing here scrapes continuously or in the background — it only runs
-  when you tap "Check store prices" on a recipe.
-
 ## Running behind a reverse proxy / exposing it outside your LAN
 
 Recipe Box speaks plain HTTP on port 3000 internally — put Traefik,
@@ -234,8 +201,6 @@ knowing if you do:
 | `SESSION_SECRET`                   | yes*     | Random string used to sign session cookies.                          |
 | `PORT`                             | no       | Port the server listens on inside the container (3000).             |
 | `DATA_DIR`                         | no       | Where the SQLite DB and uploaded photos are stored.                 |
-| `PRISMA_SEARCH_URL_TEMPLATE`       | no       | Override Prisma's search URL pattern (`{query}` placeholder).       |
-| `CITYMARKET_SEARCH_URL_TEMPLATE`   | no       | Override Citymarket's search URL pattern (`{query}` placeholder).   |
 
 \* Compose requires both `RECIPE_APP_PASSWORD` and `SESSION_SECRET` to be
 set in `.env`. The Home Assistant add-on only asks for a password and

@@ -198,27 +198,6 @@ description as a starting point rather than an error — fill in the rest
 by hand, or paste the page's visible ingredient/instruction text into
 the text box instead.
 
-## Checking Prisma / Citymarket prices
-
-Each recipe has a **🛒 Check store prices** button. Tapping it:
-
-- Always shows a search-link pill per ingredient for both **Prisma**
-  (S-kaupat) and **Citymarket** (K-Ruoka) — tap one to open that store's
-  own search for the ingredient in your browser.
-- For **Prisma**, also makes a best-effort attempt at a live price via an
-  older, unofficial S Group search endpoint. This is genuinely
-  experimental: it may return nothing, or stop working entirely if S
-  Group changes their backend — when it fails, you silently just get the
-  search-link pill instead.
-- **Citymarket** live pricing isn't implemented yet — Citymarket (K
-  Group/Kesko) is a completely separate company and platform from Prisma
-  (S Group), with no public API either; wiring it up needs a real
-  captured request from k-ruoka.fi (see `server/stores/citymarket.js` in
-  the source for exactly what's needed).
-
-Nothing here requires an account or login on either store's site — it's
-just building a search URL, plus a best-effort read-only lookup.
-
 ## Backups
 
 This add-on's data (the SQLite database and any uploaded recipe photos)

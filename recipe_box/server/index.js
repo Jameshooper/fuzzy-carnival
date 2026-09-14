@@ -7,7 +7,6 @@ const { DATA_DIR } = require('./db');
 const authRoutes = require('./routes/auth');
 const recipeRoutes = require('./routes/recipes');
 const shareRoutes = require('./routes/share');
-const storeRoutes = require('./routes/stores');
 const imageSearchRoutes = require('./routes/images');
 
 const app = express();
@@ -22,7 +21,6 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 app.use('/api', authRoutes);
 app.use('/api/recipes', recipeRoutes);
-app.use('/api/stores', storeRoutes);
 app.use('/api/image-search', imageSearchRoutes);
 app.use('/', shareRoutes); // exposes /api/parse and /share-target
 

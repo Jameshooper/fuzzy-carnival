@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.5
+
+- Removed the Prisma/Citymarket grocery store price check feature
+  entirely (the "🛒 Check store prices" button, the `/api/stores/check`
+  endpoint, and the Prisma/Citymarket lookup code). Prisma's live price
+  lookup was always experimental (an unofficial, unverified endpoint)
+  and wasn't holding up in practice, and Citymarket never had live
+  pricing implemented. Recipe Box no longer does anything
+  store/price-related.
+
 ## 1.5.4
 
 - Docs only: rewrote the "Getting real HTTPS" section. The Tailscale

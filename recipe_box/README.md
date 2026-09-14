@@ -1,9 +1,8 @@
 # Recipe Box
 
 Self-hosted, mobile-first recipe manager. Share recipes into it from the
-Claude app (or anywhere else) via your phone's share sheet, share recipes
-back out to social/messaging apps, and check ingredient prices at Prisma
-and Citymarket.
+Claude app (or anywhere else) via your phone's share sheet, and share
+recipes back out to social/messaging apps.
 
 Runs here as a Home Assistant add-on — install it from the **Add-ons**
 tab, no Docker commands needed. See [DOCS.md](DOCS.md) (the

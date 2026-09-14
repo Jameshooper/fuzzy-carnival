@@ -1,8 +1,8 @@
 ---
 name: "Recipe Box"
-version: "1.5.4"
+version: "1.5.5"
 slug: "recipe_box"
-description: "Self-hosted recipe manager — share recipes from Claude, share out to social apps, and check ingredient prices at Prisma/Citymarket."
+description: "Self-hosted recipe manager — share recipes from Claude and share out to social apps."
 url: "https://github.com/Jameshooper/fuzzy-carnival/tree/main/recipe_box"
 arch:
   - amd64

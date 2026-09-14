@@ -327,10 +327,7 @@ button, input, textarea, select {
 }
 
 .section-title { font-size: 1rem; font-weight: 700; margin: 18px 0 8px; }
-.section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 4px; flex-wrap: wrap; }
-.section-title-row .section-title { margin: 0; }
 .btn-small { padding: 7px 12px; font-size: 0.78rem; }
-.store-note { font-size: 0.78rem; color: var(--muted); line-height: 1.4; margin: 0 0 10px; }
 .ingredient-list { list-style: none; padding: 0; margin: 0; }
 .ingredient-list li {
   padding: 9px 0;
@@ -340,18 +337,6 @@ button, input, textarea, select {
 }
 .ingredient-list input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--brand); }
 .ingredient-list label { flex: 1 1 auto; }
-.store-badges { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-left: 28px; }
-.store-badges:empty { display: none; margin: 0; }
-.store-pill {
-  font-size: 0.72rem;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--border);
-  color: var(--brand-dark);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.store-pill.found { background: #dff3e3; color: #1e7a37; font-weight: 600; }
 .instruction-list { list-style: none; padding: 0; margin: 0; counter-reset: step; }
 .instruction-list li {
   counter-increment: step;
