@@ -44,24 +44,51 @@ If you already have the official **Tailscale** add-on (Settings →
 Add-ons → Add-on Store → search "Tailscale") installed and connected to
 your tailnet, this is the easiest path — a real, trusted certificate
 with no manual cert management, and it stays private to your own
-tailnet (no public internet exposure):
+tailnet (no public internet exposure).
 
-1. Open the Tailscale add-on's **Configuration** tab.
-2. Add a `services` entry pointing at Recipe Box's published port
-   (`8090` by default):
-   ```yaml
-   services:
-     - name: svc:recipebox
-       target: http://127.0.0.1:8090
-       protocol: http
-       port: 443
-       path: /
+**Use classic Tailscale Serve, not the "Services" (`svc:`) feature.**
+Tailscale's newer Services feature (a `services:` block in the add-on's
+Configuration tab, giving Recipe Box its own name like
+`recipebox.<tailnet>.ts.net`) looks like the natural fit, but as of this
+writing it couples the client-facing and backend protocol together —
+picking `https` requires Recipe Box's *backend* to also speak TLS
+(which a plain Express app doesn't), while picking `http` gets a
+working backend connection but no certificate for the browser at all.
+Neither setting gets you a real end-to-end HTTPS connection. It also
+requires tagging the device and adding an explicit ACL grant just to
+let your own other devices reach it. Classic Serve has none of these
+problems — it terminates real HTTPS for the browser using Tailscale's
+automatic certificate, and proxies to Recipe Box over plain HTTP on the
+backend, which is exactly what's needed:
+
+1. Leave the Tailscale add-on's `services:` config empty (remove any
+   `svc:recipebox` entry if you added one).
+2. Get a shell inside the Tailscale add-on's own container — the
+   **Terminal & SSH** add-on gives you the host's shell, not the
+   Tailscale container's, so from there run `docker ps` to find its
+   container name (something like `addon_..._tailscale`) and:
    ```
-3. Save and restart the Tailscale add-on.
-4. Recipe Box is now reachable at `https://recipebox.<your-tailnet-name>.ts.net`
-   from any device connected to your tailnet — including your phone, if
-   the Tailscale app is installed and connected there too.
-5. Re-do **Add to Home Screen** using this new `https://` address
+   docker exec -it <tailscale-container-name> sh
+   ```
+3. Inside that shell, point Serve at Recipe Box's published port
+   (`8090` by default; the `tailscale` binary isn't on `PATH` in this
+   container, hence the full path):
+   ```
+   /opt/tailscale serve --https=443 http://127.0.0.1:8090
+   ```
+4. Confirm it took effect:
+   ```
+   /opt/tailscale serve status
+   ```
+   which should show something like
+   `https://<device-name>.<tailnet>.ts.net |-- / proxy http://127.0.0.1:8090`.
+5. Recipe Box is now reachable at `https://<device-name>.<tailnet>.ts.net`
+   — your Home Assistant device's own Tailscale name, not a custom
+   `recipebox` name — from any device connected to your tailnet,
+   including your phone if the Tailscale app is installed and connected
+   there too. This setting is stored in Tailscale's own persistent
+   state and survives an add-on restart.
+6. Re-do **Add to Home Screen** using this new `https://` address
    (replacing the old `http://` one), and update the address in your
    [iOS Shortcut](#iphone--ipad) if you set one up.
 

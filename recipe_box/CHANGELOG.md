@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.4
+
+- Docs only: rewrote the "Getting real HTTPS" section. The Tailscale
+  Services feature (`services:`/`svc:` config) it previously
+  recommended turns out to couple the client-facing and backend
+  protocol together, so it can't actually deliver real HTTPS to the
+  browser with Recipe Box's plain-HTTP backend — confirmed the hard
+  way. Replaced with classic Tailscale Serve, which does exactly what's
+  needed (HTTPS to the browser via Tailscale's own certificate, plain
+  HTTP to Recipe Box) with no device tagging or extra ACL grants
+  required.
+
 ## 1.5.3
 
 - The session cookie's `Secure` flag was hardcoded off, ignoring
